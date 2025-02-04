@@ -48,6 +48,7 @@ csd_results <- run_csd(
     n_it = 1000, nThreads = 4L, verbose = TRUE
 )
 
+save.image(file = ".diff_coexp_analysis_RData")
 # Export to disk only if it is really necessary. R may die if the object is too big.
 #write.csv(csd_results, "csd_results.csv", row.names = FALSE)
 ```

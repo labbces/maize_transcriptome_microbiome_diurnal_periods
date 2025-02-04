@@ -1,5 +1,5 @@
 ---
-title: "Co-expression network analysis"
+title: "Data exploratory analysis and co-expression network"
 output: html_notebook
 ---
 
@@ -168,5 +168,542 @@ PCA_by_subpopulation <- PCA_coord %>%
   )
 
 PCA_by_subpopulation
+```
+
+# Importing the correlation matrices for co-expression network analyses
+
+Correlation matrices (Pearson correlation coefficients) were generated with corALS, for each condition (day periods) and the whole expression matrix.
+
+Importing the networks:
+
+```{r}
+# Day period correlation matrix
+day_cor_matrix <- as.data.frame(read_tsv("/home/renato/projects/fapesp_bepe_pd/transcriptome/co_exp_day_pearson_correlation.tsv", col_types = cols()))
+rownames(day_cor_matrix) <- day_cor_matrix[, 1]
+day_cor_matrix <- day_cor_matrix[, -1]
+head(day_cor_matrix)
+# Night period correlation matrix
+night_cor_matrix <- as.data.frame(read_tsv("/home/renato/projects/fapesp_bepe_pd/transcriptome/co_exp_night_pearson_correlation.tsv", col_types = cols()))
+rownames(night_cor_matrix) <- night_cor_matrix[, 1]
+night_cor_matrix <- night_cor_matrix[, -1]
+head(night_cor_matrix)
+# Correlation matrix for all samples (day and night)
+all_cor_matrix <- as.data.frame(read_tsv("/home/renato/projects/fapesp_bepe_pd/transcriptome/co_exp_pearson_correlation.tsv", col_types = cols()))
+rownames(all_cor_matrix) <- all_cor_matrix[, 1]
+all_cor_matrix <- all_cor_matrix[, -1]
+head(all_cor_matrix)
+```
+
+
+We don't really need duplicated information contained in the lower triangle of the matrix, so we can set it to NA:
+
+```{r}
+day_cor_matrix_tri <- day_cor_matrix
+day_cor_matrix_tri[lower.tri(day_cor_matrix_tri)] <- NA
+head(day_cor_matrix_tri, n=2)
+night_cor_matrix_tri <- night_cor_matrix
+night_cor_matrix_tri[lower.tri(night_cor_matrix_tri)] <- NA
+head(night_cor_matrix_tri)
+all_cor_matrix_tri <- all_cor_matrix
+all_cor_matrix_tri[lower.tri(all_cor_matrix_tri)] <- NA
+head(all_cor_matrix_tri)
+```
+
+
+For the edge selection step, we used a correlation threshold of 0.7, as recommended by Dr. Chenxin Li:
+
+```{r}
+
+cor_threshold <- 0.7
+
+# Converting the adjacency matrix to an edge table
+all_edge_table <- all_cor_matrix_tri %>% 
+  as.data.frame() %>% 
+  mutate(from = row.names(all_cor_matrix)) %>%
+  pivot_longer(cols = !from, names_to = "to", values_to = "r") %>%
+  filter(is.na(r) == F) %>%
+  filter(from != to)
+
+head(all_edge_table)
+dim(all_edge_table)
+
+# Filtering edges with correlation coefficient >= cor_threshold
+all_edge_table_select <- all_edge_table %>% 
+  filter(r >= cor_threshold)
+
+head(all_edge_table_select)
+dim(all_edge_table_select)
+
+# Converting the adjacency matrix to an edge table
+day_edge_table <- day_cor_matrix_tri %>% 
+  as.data.frame() %>% 
+  mutate(from = row.names(day_cor_matrix)) %>%
+  pivot_longer(cols = !from, names_to = "to", values_to = "r") %>%
+  filter(is.na(r) == F) %>%
+  filter(from != to)
+
+head(day_edge_table)
+dim(day_edge_table)
+
+# Filtering edges with correlation coefficient >= cor_threshold
+day_edge_table_select <- day_edge_table %>% 
+  filter(r >= cor_threshold)
+
+head(day_edge_table_select)
+dim(day_edge_table_select)
+
+# Converting the adjacency matrix to an edge table
+night_edge_table <- night_cor_matrix_tri %>% 
+  as.data.frame() %>% 
+  mutate(from = row.names(night_cor_matrix)) %>%
+  pivot_longer(cols = !from, names_to = "to", values_to = "r") %>%
+  filter(is.na(r) == F) %>%
+  filter(from != to)
+
+head(night_edge_table)
+dim(night_edge_table)
+
+# Filtering edges with correlation coefficient >= cor_threshold
+night_edge_table_select <- night_edge_table %>% 
+  filter(r >= cor_threshold)
+
+head(night_edge_table_select)
+dim(night_edge_table_select)
+```
+
+Creating node list with maize functional annotation, when available.
+The `kremling_expression_v5_tpm_filtered_cv_filtered_annotations.txt` file is just a two-column file with gene name and annotation as in the file used as gene descriptions in CoNekT Grasses.
+
+```{r}
+maize_funct_anno <- read_delim("kremling_expression_v5_tpm_filtered_cv_filtered_annotations.txt", delim = "\t", col_names = F, col_types = cols())
+head(maize_funct_anno)
+
+day_node_table <- data.frame(
+  Name = c(day_edge_table_select$from, day_edge_table_select$to) %>% unique()
+) %>% 
+  left_join(maize_funct_anno, by = c("Name"="X1")) %>% 
+  rename(functional_annotation = X2)
+head(day_node_table)
+dim(day_node_table)
+
+night_node_table <- data.frame(
+  Name = c(night_edge_table_select$from, night_edge_table_select$to) %>% unique()
+) %>% 
+  left_join(maize_funct_anno, by = c("Name"="X1")) %>% 
+  rename(functional_annotation = X2)
+head(night_node_table)
+dim(night_node_table)
+
+all_node_table <- data.frame(
+  Name = c(all_edge_table_select$from, all_edge_table_select$to) %>% unique()
+) %>% 
+  left_join(maize_funct_anno, by = c("Name"="X1")) %>% 
+  rename(functional_annotation = X2)
+head(all_node_table)
+dim(all_node_table)
+```
+
+Creating the network objects:
+
+```{r}
+all_network <- graph_from_data_frame(
+  all_edge_table_select,
+  vertices = all_node_table,
+  directed = F
+)
+
+day_network <- graph_from_data_frame(
+  day_edge_table_select,
+  vertices = day_node_table,
+  directed = F
+)
+
+night_network <- graph_from_data_frame(
+  night_edge_table_select,
+  vertices = night_node_table,
+  directed = F
+)
+```
+
+Clustering the networks.
+
+Dr. Chinxen Li wrote a function for optimizing the selection of resolution parameter when clustering the networks.
+
+He described it [here](https://github.com/cxli233/SimpleTidy_GeneCoEx):
+
+```{r}
+optimize_resolution <- function(network, resolution){
+  modules = network %>% 
+    cluster_leiden(resolution_parameter = resolution,
+                   objective_function = "modularity")
+  
+  parsed_modules = data.frame(
+    Name = names(membership(modules)),
+    module = as.vector(membership(modules)) 
+    )
+  
+  num_module_5 = parsed_modules %>% 
+    group_by(module) %>% 
+    count() %>% 
+    arrange(-n) %>% 
+    filter(n >= 5) %>% 
+    nrow() %>% 
+    as.numeric()
+  
+  num_genes_contained = parsed_modules %>% 
+    group_by(module) %>% 
+    count() %>% 
+    arrange(-n) %>% 
+    filter(n >= 5) %>% 
+    ungroup() %>% 
+    summarise(sum = sum(n)) %>% 
+    as.numeric()
+  
+  c(num_module_5, num_genes_contained)
+
+}
+```
+
+
+Running the function for the day, the night, and the network with all samples:
+
+```{r}
+optimization_results_all <- purrr::map_dfc(
+  .x = seq(from = 0.25, to = 20, by = 0.25),
+  .f = optimize_resolution, 
+  network = all_network
+) %>% 
+  t() %>% 
+  cbind(
+   resolution = seq(from = 0.25, to = 20, by = 0.25)
+  ) %>% 
+  as.data.frame() %>% 
+  rename(num_module = V1,
+         num_contained_gene = V2)
+
+optimization_results_day <- purrr::map_dfc(
+  .x = seq(from = 0.25, to = 10, by = 0.25),
+  .f = optimize_resolution, 
+  network = day_network
+) %>% 
+  t() %>% 
+  cbind(
+   resolution = seq(from = 0.25, to = 10, by = 0.25)
+  ) %>% 
+  as.data.frame() %>% 
+  rename(num_module = V1,
+         num_contained_gene = V2)
+
+optimization_results_night <- purrr::map_dfc(
+  .x = seq(from = 0.25, to = 10, by = 0.25),
+  .f = optimize_resolution, 
+  network = night_network
+) %>% 
+  t() %>% 
+  cbind(
+   resolution = seq(from = 0.25, to = 10, by = 0.25)
+  ) %>% 
+  as.data.frame() %>% 
+  rename(num_module = V1,
+         num_contained_gene = V2)
+```
+
+
+Plotting:
+
+```{r}
+Optimize_num_module_all <- optimization_results_all %>% 
+  ggplot(aes(x = resolution, y = num_module)) +
+  geom_line(size = 1.1, alpha = 0.8, color = "dodgerblue2") +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_vline(xintercept = 10.25, size = 1, linetype = 4) +
+  labs(x = "resolution parameter",
+       y = "num. modules\nw/ >=5 genes") +
+  theme_classic() +
+  theme(
+    text = element_text(size = 14),
+    axis.text = element_text(color = "black")
+  )
+
+Optimize_num_gene_all <- optimization_results_all %>% 
+  ggplot(aes(x = resolution, y = num_contained_gene)) +
+  geom_line(size = 1.1, alpha = 0.8, color = "violetred2") +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_vline(xintercept = 10.25, size = 1, linetype = 4) +
+  labs(x = "resolution parameter",
+       y = "num. genes in\nmodules w/ >=5 genes") +
+  theme_classic() +
+  theme(
+    text = element_text(size = 14),
+    axis.text = element_text(color = "black")
+  )
+
+wrap_plots(Optimize_num_module_all, Optimize_num_gene_all, nrow = 2)
+```
+
+```{r}
+Optimize_num_module_day <- optimization_results_day %>% 
+  ggplot(aes(x = resolution, y = num_module)) +
+  geom_line(size = 1.1, alpha = 0.8, color = "dodgerblue2") +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_vline(xintercept = 6.25, size = 1, linetype = 4) +
+  labs(x = "resolution parameter",
+       y = "num. modules\nw/ >=5 genes") +
+  theme_classic() +
+  theme(
+    text = element_text(size = 14),
+    axis.text = element_text(color = "black")
+  )
+
+Optimize_num_gene_day <- optimization_results_day %>% 
+  ggplot(aes(x = resolution, y = num_contained_gene)) +
+  geom_line(size = 1.1, alpha = 0.8, color = "violetred2") +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_vline(xintercept = 6.25, size = 1, linetype = 4) +
+  labs(x = "resolution parameter",
+       y = "num. genes in\nmodules w/ >=5 genes") +
+  theme_classic() +
+  theme(
+    text = element_text(size = 14),
+    axis.text = element_text(color = "black")
+  )
+
+wrap_plots(Optimize_num_module_day, Optimize_num_gene_day, nrow = 2)
+```
+
+```{r}
+Optimize_num_module_night <- optimization_results_night %>% 
+  ggplot(aes(x = resolution, y = num_module)) +
+  geom_line(size = 1.1, alpha = 0.8, color = "dodgerblue2") +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_vline(xintercept = 5.75, size = 1, linetype = 4) +
+  labs(x = "resolution parameter",
+       y = "num. modules\nw/ >=5 genes") +
+  theme_classic() +
+  theme(
+    text = element_text(size = 14),
+    axis.text = element_text(color = "black")
+  )
+
+Optimize_num_gene_night <- optimization_results_night %>% 
+  ggplot(aes(x = resolution, y = num_contained_gene)) +
+  geom_line(size = 1.1, alpha = 0.8, color = "violetred2") +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_vline(xintercept = 5.75, size = 1, linetype = 4) +
+  labs(x = "resolution parameter",
+       y = "num. genes in\nmodules w/ >=5 genes") +
+  theme_classic() +
+  theme(
+    text = element_text(size = 14),
+    axis.text = element_text(color = "black")
+  )
+
+wrap_plots(Optimize_num_module_night, Optimize_num_gene_night, nrow = 2)
+```
+
+Running the actual clustering analysis with the selected resolution parameters:
+
+```{r}
+all_net_modules <- cluster_leiden(all_network, resolution_parameter = 10.25,
+                          objective_function = "modularity")
+day_net_modules <- cluster_leiden(day_network, resolution_parameter = 6.25,
+                          objective_function = "modularity")
+night_net_modules <- cluster_leiden(night_network, resolution_parameter = 5.75, 
+                          objective_function = "modularity")
+length(day_net_modules)
+length(night_net_modules)
+length(all_net_modules)
+```
+
+
+Obtaining some statistics about the modules:
+
+```{r}
+network_modules_all <- data.frame(
+  Name = names(membership(all_net_modules)),
+  module = as.vector(membership(all_net_modules)) 
+) %>% 
+  inner_join(all_node_table, by = "Name")
+
+# Getting the number of modules with more than 5 genes in them
+network_modules_all %>% 
+  group_by(module) %>% 
+  count() %>% 
+  arrange(-n) %>% 
+  filter(n >= 5)
+
+# Getting the number of genes in such modules (> 5 genes)
+network_modules_all %>% 
+  group_by(module) %>% 
+  count() %>% 
+  arrange(-n) %>% 
+  filter(n >= 5) %>% 
+  ungroup() %>% 
+  summarise(sum = sum(n))
+
+network_modules_day <- data.frame(
+  Name = names(membership(day_net_modules)),
+  module = as.vector(membership(day_net_modules)) 
+) %>% 
+  inner_join(day_node_table, by = "Name")
+
+# Getting the number of modules with more than 5 genes in them
+network_modules_day %>% 
+  group_by(module) %>% 
+  count() %>% 
+  arrange(-n) %>% 
+  filter(n >= 5)
+
+# Getting the number of genes in such modules (> 5 genes)
+network_modules_day %>% 
+  group_by(module) %>% 
+  count() %>% 
+  arrange(-n) %>% 
+  filter(n >= 5) %>% 
+  ungroup() %>% 
+  summarise(sum = sum(n))
+
+head(network_modules_day, n=40)
+
+network_modules_night <- data.frame(
+  Name = names(membership(night_net_modules)),
+  module = as.vector(membership(night_net_modules)) 
+) %>% 
+  inner_join(night_node_table, by = "Name")
+
+# Getting the number of modules with more than 5 genes in them
+network_modules_night %>% 
+  group_by(module) %>% 
+  count() %>% 
+  arrange(-n) %>% 
+  filter(n >= 5)
+
+# Getting the number of genes in such modules (> 5 genes)
+network_modules_night %>% 
+  group_by(module) %>% 
+  count() %>% 
+  arrange(-n) %>% 
+  filter(n >= 5) %>% 
+  ungroup() %>% 
+  summarise(sum = sum(n))
+
+head(network_modules_night, n=40)
+```
+
+
+Analyzing the clusters and testing for differential expression between day and night periods:
+
+```{r}
+# Getting the number of modules with more than 5 genes in them
+modules_all_gt5genes <- network_modules_all %>% 
+  group_by(module) %>% 
+  count() %>% 
+  arrange(-n) %>% 
+  filter(n >= 5)
+
+head(modules_all_gt5genes)
+
+# Getting the genes in such modules (> 5 genes)
+network_modules_all_gt5genes <- network_modules_all %>% 
+  filter(module %in% modules_all_gt5genes$module)
+
+# Computing the z-scores for the wide table with the ~7000 genes (filtered and used in co-expression analysis)
+head(Exp_table_long)
+Exp_table_long_z <- Exp_table_long %>% 
+  group_by(Name) %>% 
+  mutate(z.score = (logTPM - mean(logTPM))/sd(logTPM)) %>% 
+  ungroup()
+head(Exp_table_long_z)
+dim(Exp_table_long_z)
+
+# Adding module information to the Exp_table_long_z dataframe and keeping only records with module information
+Exp_table_long_z <- Exp_table_long_z %>% 
+  inner_join(network_modules_all_gt5genes %>% select(Name, module), by = "Name")
+dim(Exp_table_long_z)
+# Adding day period information to the Exp_table_long_z dataframe
+Exp_table_long_z <- Exp_table_long_z %>% 
+  inner_join(sample_metadata %>% select(SampleName, DayPeriod), by = "SampleName")
+dim(Exp_table_long_z)
+# Ensure SampleName is a factor with correct order
+Exp_table_long_z <- Exp_table_long_z %>%
+  mutate(SampleName = factor(SampleName, levels = unique(Exp_table_long_z$SampleName)))
+dim(Exp_table_long_z)
+head(Exp_table_long_z)
+
+write.table(Exp_table_long_z, file = "Exp_table_long_z.txt", sep = "\t", quote = F, row.names = F)
+
+# Getting details about the t.test function
+?t.test
+?p.adjust
+
+# Test differences between day and night periods for each module
+modules_t_test <- Exp_table_long_z %>% 
+  group_by(module) %>% 
+  summarise(
+    p.value = t.test(TPM ~ DayPeriod)$p.value,
+    mean_day = mean(TPM[DayPeriod == "day"]),
+    mean_night = mean(TPM[DayPeriod == "night"]),
+    log_fold_change = log2(mean_day/mean_night)
+  ) %>% 
+  mutate(adj_p.value = p.adjust(p.value, method = "bonferroni")) %>%
+  filter(adj_p.value < 0.05) %>%
+  filter(abs(log_fold_change) > 1) %>%
+  arrange(desc(abs(log_fold_change)))
+
+write.table(modules_t_test, file = "modules_t_test.txt", sep = "\t", quote = F, row.names = F)
+
+# Plotting z-scores for each module
+p <- ggplot(Exp_table_long_z, aes(x = SampleName, y = z.score)) +
+  facet_wrap(~module, scales = "free_x") +  # Facet by module
+  geom_line(aes(group = Name), alpha = 0.3, color = "grey70") +
+  labs(
+    x = NULL,
+    y = "z-score"
+  ) +
+  theme_classic() +
+  theme(
+    text = element_text(size = 6),
+    axis.text.x = element_blank(),
+    panel.spacing = unit(1, "line")
+  )
+
+ggsave("plot.pdf", plot = p, width = 20, height = 10)
+ggsave("plot.png", plot = p, width = 20, height = 10)
+
+# Create a named vector of colors based on DayPeriod
+# This vector will be the same for any module
+sample_colors <- Exp_table_long_z %>%
+  filter(module == 64) %>%
+  distinct(SampleName, DayPeriod) %>%
+  mutate(color = ifelse(DayPeriod == "day", "gold", "blue")) %>%  # Map "Day" to gold and "Night" to blue
+  select(SampleName, color) %>%  # Keep only SampleName and color columns
+  deframe()
+
+# Plot z-scores for each gene in module 118
+p_single_module <- Exp_table_long_z %>% 
+  filter(module == 118) %>% 
+  ggplot(aes(x = SampleName, y = z.score)) +
+  geom_line(aes(group = Name), alpha = 0.3, color = "grey70") +
+  stat_summary(fun = mean, aes(group = 1), geom = "line", color = "black", size = 1.2) +
+  labs(
+    x = NULL,
+    y = "z-score",
+    title = "Module 118"
+  ) +
+  theme_classic() +
+  theme(
+    text = element_text(size = 14),
+    axis.text.x = element_text(
+      size = 4,
+      angle = 90,
+      hjust = 1,
+      color = sample_colors[levels(factor(Exp_table_long_z$SampleName))]
+    ),
+    axis.ticks.x = element_blank(),
+    panel.spacing = unit(1, "line")
+  )
+
+ggsave("plot2_mod118_means.pdf", plot = p_single_module, width = 20, height = 10)
+ggsave("plot2_mod118_means.png", plot = p_single_module, width = 20, height = 10)
 ```
 
