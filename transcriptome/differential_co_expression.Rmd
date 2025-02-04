@@ -1,0 +1,118 @@
+---
+title: "Differential Co-expression analysis"
+output: html_notebook
+---
+
+In addition to the network analysis carried out with corALS, a differential co-expression analysis was also carried out using csdR ([Pettersen & Almaas, 2022](https://link.springer.com/article/10.1186/s12859-022-04605-1)).
+
+```{r}
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("csdR")
+
+#install.packages("igraph")
+#install.packages("dplyr")
+
+library(csdR)
+library(magrittr)
+library(igraph)
+library(glue)
+library(dplyr)
+```
+
+## Importing matrices
+
+Matrices are TPM-normalized gene expression.
+
+Before generating co-expression networks or compute the differential co-expression with the csdR package, we filtered the genes that are lowly expressed and/or have low variance (same genes used in co-expression and cross-correlation networks). 
+
+
+```{r}
+expression_kremling_tpm_filtered_night <- read.table("/home/renato/projects/fapesp_bepe_pd/transcriptome/expression_kremling_tpm_filtered_night.tsv", header = TRUE, sep = "\t", row.names = 1)
+expression_kremling_tpm_filtered_day <- read.table("/home/renato/projects/fapesp_bepe_pd/transcriptome/expression_kremling_tpm_filtered_day.tsv", header = TRUE, sep = "\t", row.names = 1)
+```
+
+## Running csdR
+
+Both matrices were transposed and used as input for the csdR package.
+The function `run_csd` was used to compute the differential co-expression between day and night samples. The function was run with 1,000 iterations and 4 threads.
+
+Note that the csdR package uses Spearman correlation coefficients.
+
+```{r}
+expression_kremling_tpm_filtered_day_transpose <- t(expression_kremling_tpm_filtered_day)
+expression_kremling_tpm_filtered_night_transpose <- t(expression_kremling_tpm_filtered_night)
+
+csd_results <- run_csd(
+    x_1 = expression_kremling_tpm_filtered_day_transpose, x_2 = expression_kremling_tpm_filtered_night_transpose,
+    n_it = 1000, nThreads = 4L, verbose = TRUE
+)
+
+# Export to disk only if it is really necessary. R may die if the object is too big.
+#write.csv(csd_results, "csd_results.csv", row.names = FALSE)
+```
+
+
+The interpretation of results for the differential co-expression analyses were carried out for the top 3000 pairs with the highest c, s, and d values.
+
+Obtaining the top 3000 pairs for each c, s, and d values:
+
+```{r}
+pairs_to_pick <- 3000L
+c_filter <- partial_argsort(csd_results$cVal, pairs_to_pick)
+c_frame <- csd_results[c_filter, ]
+s_filter <- partial_argsort(csd_results$sVal, pairs_to_pick)
+s_frame <- csd_results[s_filter, ]
+d_filter <- partial_argsort(csd_results$dVal, pairs_to_pick)
+d_frame <- csd_results[d_filter, ]
+
+csd_filter <- c_filter %>%
+    union(s_filter) %>%
+    union(d_filter)
+csd_frame <- csd_results[csd_filter, ]
+
+dim(csd_frame)
+head(csd_frame)
+
+write.csv(csd_frame, "csd_frame_top3000L.csv", row.names = FALSE)
+```
+
+
+Plotting the network using different colors for each type of edge (C, S, D):
+
+```{r}
+c_network <- graph_from_data_frame(c_frame, directed = FALSE)
+s_network <- graph_from_data_frame(s_frame, directed = FALSE)
+d_network <- graph_from_data_frame(d_frame, directed = FALSE)
+E(c_network)$edge_type <- "C"
+E(s_network)$edge_type <- "S"
+E(d_network)$edge_type <- "D"
+combined_network <- igraph::union(c_network, s_network, d_network)
+
+join_attributes <- function(graph, attribute) {
+    ifelse(
+        test = is.na(edge_attr(graph, glue("{attribute}_1"))),
+        yes = ifelse(
+            test = is.na(edge_attr(graph, glue("{attribute}_2"))),
+            yes = edge_attr(graph, glue("{attribute}_3")),
+            no = edge_attr(graph, glue("{attribute}_2"))
+        ),
+        no = edge_attr(graph, glue("{attribute}_1"))
+    )
+}
+
+E(combined_network)$edge_type <- join_attributes(combined_network, "edge_type")
+layout <- layout_nicely(combined_network)
+E(combined_network)$color <- recode(E(combined_network)$edge_type,
+    C = "darkblue", S = "green", D = "darkred"
+)
+png("network_plot.png", width = 10000, height = 10000, res = 300)
+plot(combined_network, layout = layout,
+    vertex.size = 1, edge.width = 1, vertex.label.cex = 0.001, rescale = TRUE,
+    width = 1000, height = 1000
+)
+while (!is.null(dev.list())) {
+    dev.off()
+}
+
+```
