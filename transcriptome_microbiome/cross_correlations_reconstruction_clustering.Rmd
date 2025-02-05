@@ -1,0 +1,54 @@
+---
+title: "SparXCC and clustering bi-partite networks"
+output: html_notebook
+---
+
+This notebook describes the step to perform the SparXCC cross-correlation analysis between microbiome and host transcriptome.
+
+The clustering of the bi-partite networks is also done with the Beckett method.
+
+```{r}
+library(devtools)
+library(CompoCor)
+```
+
+SparXCC uses counts data after filtering out low abundance OTUs, which are the same matrices used in reconstruction of co-occurrence networks.
+
+Importing the OTU counts matrices:
+
+```{r}
+# Day samples
+wallace_otu_counts_filtered_day <- read.csv("/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv", sep="\t", header=TRUE, row.names=1)
+dim(wallace_otu_counts_filtered_day)
+head(wallace_otu_counts_filtered_day)
+colnames(wallace_otu_counts_filtered_day) <- gsub("^X", "", colnames(wallace_otu_counts_filtered_day))
+
+# Night samples
+wallace_otu_counts_filtered_night <- read.csv("/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv", sep="\t", header=TRUE, row.names=1)
+dim(wallace_otu_counts_filtered_night)
+head(wallace_otu_counts_filtered_night)
+colnames(wallace_otu_counts_filtered_night) <- gsub("^X", "", colnames(wallace_otu_counts_filtered_night))
+```
+
+
+```{r}
+kremling_expression_counts_filtered <- read.csv("/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_summed_OTUs_plant_center_retreat/expression_counts_day_night_filtered_cv_filtered.tsv", sep="\t", header=TRUE, row.names=1)
+head(kremling_expression_counts_filtered)
+
+kremling_expression_counts_filtered_day <- kremling_expression_counts_filtered[, grep("day", names(kremling_expression_counts_filtered), value = TRUE)]
+kremling_expression_counts_filtered_night <- kremling_expression_counts_filtered[, grep("night", names(kremling_expression_counts_filtered), value = TRUE)]
+
+head(kremling_expression_counts_filtered_day)
+dim(kremling_expression_counts_filtered_day)
+colnames(kremling_expression_counts_filtered_day) <- gsub("day_", "", colnames(kremling_expression_counts_filtered_day))
+head(kremling_expression_counts_filtered_day)
+
+head(kremling_expression_counts_filtered_night)
+dim(kremling_expression_counts_filtered_night)
+colnames(kremling_expression_counts_filtered_night) <- gsub("night_", "", colnames(kremling_expression_counts_filtered_night))
+head(kremling_expression_counts_filtered_night)
+
+wallace_otu_counts_filtered_day_sorted <- wallace_otu_counts_filtered_day[ , colnames(kremling_expression_counts_filtered_day)]
+wallace_otu_counts_filtered_night_sorted <- wallace_otu_counts_filtered_night[ , colnames(kremling_expression_counts_filtered_night)]
+```
+
