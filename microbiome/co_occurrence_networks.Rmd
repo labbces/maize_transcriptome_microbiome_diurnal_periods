@@ -1,0 +1,153 @@
+---
+title: "Co-occurrence networks for day and night samples in Wallace et al (2018) with paired RNA-Seq"
+output: html_notebook
+---
+
+This notebook describes the reconstruction and analysis of co-occurrence networks of day and night samples in [Wallace et al (2018)](https://apsjournals.apsnet.org/doi/10.1094/PBIOMES-02-18-0008-R) that have paired RNA-Seq data.
+OTUs are the same used in cross-correlations carried out between OTUs and maize genes.
+
+Before reconstruction of co-occurrence networks, OTUs were filtered based on relative abundance (> 0.001 in at least 50% samples) and the coefficient of variation (OTUs above the first lower quartile).
+The OTU counts are used in the construction of the networks.
+
+```{r}
+library(devtools)
+#install_github("zdk123/SpiecEasi")
+library(SpiecEasi)
+```
+
+```{r}
+#Importing day and night tables
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
+
+head(day_otu_filtered_sparxcc_wallace2018)
+head(night_otu_filtered_sparxcc_wallace2018)
+
+#Transposing matrices
+day_otu_filtered_sparxcc_wallace2018_transposed <- t(day_otu_filtered_sparxcc_wallace2018)
+night_otu_filtered_sparxcc_wallace2018_transposed <- t(night_otu_filtered_sparxcc_wallace2018)
+
+#Running spiec-easi with Meinshausen-Bühlman (MB)
+se.mb.day_otu_filtered_sparxcc_wallace2018 <- spiec.easi(day_otu_filtered_sparxcc_wallace2018_transposed, method='mb', lambda.min.ratio=1e-2, nlambda=20, pulsar.params=list(rep.num=50, ncores=8))
+se.mb.night_otu_filtered_sparxcc_wallace2018 <- spiec.easi(night_otu_filtered_sparxcc_wallace2018_transposed, method='mb', lambda.min.ratio=1e-2, nlambda=20, pulsar.params=list(rep.num=50, ncores=8))
+
+#Adding OTU names to adjacency matrices
+se.mb.day_otu_filtered_sparxcc_wallace2018_matrix <- getRefit(se.mb.day_otu_filtered_sparxcc_wallace2018)
+se.mb.night_otu_filtered_sparxcc_wallace2018_matrix <- getRefit(se.mb.night_otu_filtered_sparxcc_wallace2018)
+rownames(se.mb.day_otu_filtered_sparxcc_wallace2018_matrix) <- colnames(day_otu_filtered_sparxcc_wallace2018_transposed)
+rownames(se.mb.night_otu_filtered_sparxcc_wallace2018_matrix) <- colnames(night_otu_filtered_sparxcc_wallace2018_transposed)
+
+# Creating igraph objects
+ig.day.mb <- adj2igraph(se.mb.day_otu_filtered_sparxcc_wallace2018_matrix, vertex.attr=list(name=rownames(se.mb.day_otu_filtered_sparxcc_wallace2018_matrix)))
+ig.night.mb <- adj2igraph(se.mb.night_otu_filtered_sparxcc_wallace2018_matrix, vertex.attr=list(name=rownames(se.mb.night_otu_filtered_sparxcc_wallace2018_matrix)))
+
+## set size of vertex proportional to clr-mean (from [spiec-easi tutorial](https://github.com/zdk123/SpiecEasi))
+vsize.day <- rowMeans(clr(day_otu_filtered_sparxcc_wallace2018_transposed, 1))+6
+vsize.night <- rowMeans(clr(night_otu_filtered_sparxcc_wallace2018_transposed, 1))+6
+
+# Extracting the adjacency matrix from spiec.easi object (day and night)
+se.mb.day_otu_filtered_sparxcc_wallace2018.matrix <- symBeta(getOptBeta(se.mb.day_otu_filtered_sparxcc_wallace2018), mode='maxabs')
+se.mb.day_otu_filtered_sparxcc_wallace2018.matrix.dsc <- se.mb.day_otu_filtered_sparxcc_wallace2018.matrix
+se.mb.day_otu_filtered_sparxcc_wallace2018.matrix <- as.matrix(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix)
+se.mb.night_otu_filtered_sparxcc_wallace2018.matrix <- symBeta(getOptBeta(se.mb.night_otu_filtered_sparxcc_wallace2018), mode='maxabs')
+se.mb.night_otu_filtered_sparxcc_wallace2018.matrix.dsc <- se.mb.night_otu_filtered_sparxcc_wallace2018.matrix
+se.mb.night_otu_filtered_sparxcc_wallace2018.matrix <- as.matrix(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix)
+
+# Renaming rows and columns of the adjacency matrix (day and night)
+rownames(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix) <- colnames(day_otu_filtered_sparxcc_wallace2018_transposed)
+colnames(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix) <- colnames(day_otu_filtered_sparxcc_wallace2018_transposed)
+day_sparxcc.otu.names <- colnames(day_otu_filtered_sparxcc_wallace2018_transposed)
+rownames(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix) <- colnames(night_otu_filtered_sparxcc_wallace2018_transposed)
+colnames(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix) <- colnames(night_otu_filtered_sparxcc_wallace2018_transposed)
+night_sparxcc.otu.names <- colnames(night_otu_filtered_sparxcc_wallace2018_transposed)
+
+# Generating the graph from the adjacency matrix (day and night)
+se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net <- graph_from_adjacency_matrix(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix, mode = c("undirected"), weighted = TRUE, diag = FALSE)
+V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$name <- day_sparxcc.otu.names
+se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net <- graph_from_adjacency_matrix(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix, mode = c("undirected"), weighted = TRUE, diag = FALSE)
+V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$name <- night_sparxcc.otu.names
+
+# Converting edge weights into distances (larger values are shorter distances)
+se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net.dist <- se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net
+se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist <- se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net
+day_sparxcc.weights.dist <- 1 - abs(E(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight)
+night_sparxcc.weights.dist <- 1 - abs(E(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight)
+E(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight <- day_sparxcc.weights.dist
+E(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight <- night_sparxcc.weights.dist
+```
+
+## Clustering the network (Louvain):
+
+```{r}
+day_sparxcc_wt <- cluster_louvain(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net, weights = E(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight)
+day_sparxcc_temp <- V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$name
+day_sparxcc_temp <- as.data.frame(day_sparxcc_temp)
+day_sparxcc_temp$louvain <- membership(day_sparxcc_wt)
+
+night_sparxcc_wt <- cluster_louvain(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, weights = E(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight)
+night_sparxcc_temp <- V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$name
+night_sparxcc_temp <- as.data.frame(night_sparxcc_temp)
+night_sparxcc_temp$louvain <- membership(night_sparxcc_wt)
+
+V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain <- day_sparxcc_temp$louvain
+V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
+V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain <- night_sparxcc_temp$louvain
+V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)
+
+# Just checking vertex attributes in the graph
+vertex_attr(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
+vertex_attr(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)
+```
+
+
+## Computing Zi and Pi
+
+This function requires a previous clustering step (above).
+
+Using function from the [brainGraph R library](https://cran.r-project.org/web/packages/brainGraph/index.html):
+
+
+```{r}
+#install.packages("brainGraph")
+library(brainGraph)
+# Documentation: https://search.r-project.org/CRAN/refmans/brainGraph/html/vertex_roles.html
+# Zi (within module connectivity)
+Zi_day <- within_module_deg_z_score(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net, V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain)
+Zi_night <- within_module_deg_z_score(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain)
+
+V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$Zi <- Zi_day
+V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$Zi <- Zi_night
+
+# Pi (among-module connectivity)
+Pi_day <- part_coeff(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net, V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain)
+V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$Pi <- Pi_day
+Pi_night <- part_coeff(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain)
+V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$Pi <- Pi_night
+
+se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net_df <- data.frame(Node = V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$name,
+           Louvain_Module = V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain,
+           Zi = V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$Zi,
+           Pi = V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$Pi)
+se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df <- data.frame(Node = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$name,
+           Louvain_Module = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain,
+           Zi = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$Zi,
+           Pi = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$Pi)
+
+# Scatter plot with Pi and Zi
+png(filename = "day_Pi_Zi_plot.png")
+plot(Pi_day, Zi_day, xlab = "Among-module connectivity (Pi)", ylab = "Within-module degree z-score (Zi)")
+# Add threshold lines
+abline(v = 0.62, col = "red", lty = 2, lwd = 2)  # Horizontal line at Pi = 0.62
+abline(h = 2.5, col = "green", lty = 2, lwd = 2)  # Vertical line at Zi = 2.5
+dev.off()
+
+png(filename = "night_Pi_Zi_plot.png")
+plot(Pi_night, Zi_night, xlab = "Among-module connectivity (Pi)", ylab = "Within-module degree z-score (Zi)")
+# Add threshold lines
+abline(v = 0.62, col = "red", lty = 2, lwd = 2)  # Horizontal line at Pi = 0.62
+abline(h = 2.5, col = "green", lty = 2, lwd = 2)  # Vertical line at Zi = 2.5
+dev.off()
+```
+
