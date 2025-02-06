@@ -10,7 +10,7 @@ Before reconstruction of co-occurrence networks, OTUs were filtered based on rel
 The OTU counts are used in the construction of the networks.
 
 ```{r}
-library(devtools)
+#library(devtools)
 #install_github("zdk123/SpiecEasi")
 library(SpiecEasi)
 ```
@@ -38,14 +38,6 @@ se.mb.day_otu_filtered_sparxcc_wallace2018_matrix <- getRefit(se.mb.day_otu_filt
 se.mb.night_otu_filtered_sparxcc_wallace2018_matrix <- getRefit(se.mb.night_otu_filtered_sparxcc_wallace2018)
 rownames(se.mb.day_otu_filtered_sparxcc_wallace2018_matrix) <- colnames(day_otu_filtered_sparxcc_wallace2018_transposed)
 rownames(se.mb.night_otu_filtered_sparxcc_wallace2018_matrix) <- colnames(night_otu_filtered_sparxcc_wallace2018_transposed)
-
-# Creating igraph objects
-ig.day.mb <- adj2igraph(se.mb.day_otu_filtered_sparxcc_wallace2018_matrix, vertex.attr=list(name=rownames(se.mb.day_otu_filtered_sparxcc_wallace2018_matrix)))
-ig.night.mb <- adj2igraph(se.mb.night_otu_filtered_sparxcc_wallace2018_matrix, vertex.attr=list(name=rownames(se.mb.night_otu_filtered_sparxcc_wallace2018_matrix)))
-
-## set size of vertex proportional to clr-mean (from [spiec-easi tutorial](https://github.com/zdk123/SpiecEasi))
-vsize.day <- rowMeans(clr(day_otu_filtered_sparxcc_wallace2018_transposed, 1))+6
-vsize.night <- rowMeans(clr(night_otu_filtered_sparxcc_wallace2018_transposed, 1))+6
 
 # Extracting the adjacency matrix from spiec.easi object (day and night)
 se.mb.day_otu_filtered_sparxcc_wallace2018.matrix <- symBeta(getOptBeta(se.mb.day_otu_filtered_sparxcc_wallace2018), mode='maxabs')
@@ -134,6 +126,10 @@ se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df <- data.frame(Node = 
            Louvain_Module = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain,
            Zi = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$Zi,
            Pi = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$Pi)
+
+# Write dataframes to tabular files
+write.table(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "day_network_zi_pi_metrics.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "night_network_zi_pi_metrics.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
 
 # Scatter plot with Pi and Zi
 png(filename = "day_Pi_Zi_plot.png")
