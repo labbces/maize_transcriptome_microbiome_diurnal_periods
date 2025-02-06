@@ -8,7 +8,7 @@ This notebook describes the step to perform the SparXCC cross-correlation analys
 The clustering of the bi-partite networks is also done with the Beckett method.
 
 ```{r}
-library(devtools)
+#library(devtools)
 library(CompoCor)
 ```
 
@@ -32,7 +32,7 @@ colnames(wallace_otu_counts_filtered_night) <- gsub("^X", "", colnames(wallace_o
 
 
 ```{r}
-kremling_expression_counts_filtered <- read.csv("/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_summed_OTUs_plant_center_retreat/expression_counts_day_night_filtered_cv_filtered.tsv", sep="\t", header=TRUE, row.names=1)
+kremling_expression_counts_filtered <- read.csv("/home/renato/projects/fapesp_bepe_pd/transcriptome/kremling_expression_v5_counts_filtered_cv_filtered.tsv", sep="\t", header=TRUE, row.names=1)
 head(kremling_expression_counts_filtered)
 
 kremling_expression_counts_filtered_day <- kremling_expression_counts_filtered[, grep("day", names(kremling_expression_counts_filtered), value = TRUE)]
@@ -40,15 +40,209 @@ kremling_expression_counts_filtered_night <- kremling_expression_counts_filtered
 
 head(kremling_expression_counts_filtered_day)
 dim(kremling_expression_counts_filtered_day)
-colnames(kremling_expression_counts_filtered_day) <- gsub("day_", "", colnames(kremling_expression_counts_filtered_day))
+colnames(kremling_expression_counts_filtered_day) <- gsub("exp_day_", "", colnames(kremling_expression_counts_filtered_day))
 head(kremling_expression_counts_filtered_day)
 
 head(kremling_expression_counts_filtered_night)
 dim(kremling_expression_counts_filtered_night)
-colnames(kremling_expression_counts_filtered_night) <- gsub("night_", "", colnames(kremling_expression_counts_filtered_night))
+colnames(kremling_expression_counts_filtered_night) <- gsub("exp_night_", "", colnames(kremling_expression_counts_filtered_night))
 head(kremling_expression_counts_filtered_night)
 
 wallace_otu_counts_filtered_day_sorted <- wallace_otu_counts_filtered_day[ , colnames(kremling_expression_counts_filtered_day)]
 wallace_otu_counts_filtered_night_sorted <- wallace_otu_counts_filtered_night[ , colnames(kremling_expression_counts_filtered_night)]
 ```
 
+Transposing dataframes:
+
+```{r}
+wallace_otu_counts_filtered_day_transposed <- t(wallace_otu_counts_filtered_day_sorted)
+wallace_otu_counts_filtered_night_transposed <- t(wallace_otu_counts_filtered_night_sorted)
+kremling_expression_counts_filtered_day_transposed <- t(kremling_expression_counts_filtered_day)
+kremling_expression_counts_filtered_night_transposed <- t(kremling_expression_counts_filtered_night)
+```
+
+Making sure row names (samples) are identical between OTU and Expression data:
+
+```{r}
+identical(row.names(wallace_otu_counts_filtered_day_transposed), row.names(kremling_expression_counts_filtered_day_transposed))
+identical(row.names(wallace_otu_counts_filtered_night_transposed), row.names(kremling_expression_counts_filtered_night_transposed))
+```
+
+Running SparXCC for the day and night samples:
+
+```{r}
+SparXCC_output_day <- SparXCC_base(wallace_otu_counts_filtered_day_transposed,
+                        kremling_expression_counts_filtered_day_transposed,
+                        pseudo_count = 1,
+                        var_min = 1e-05,
+                        Find_m = TRUE,
+                        B_m = 100,
+			            cores = 8)
+write.table(SparXCC_output_day, file = "SparXCC_output_day.txt", sep = "\t")
+
+SparXCC_output_night <- SparXCC_base(wallace_otu_counts_filtered_night_transposed,
+                        kremling_expression_counts_filtered_night_transposed,
+                        pseudo_count = 1,
+                        var_min = 1e-05,
+                        Find_m = TRUE,
+                        B_m = 100,
+			            cores = 8)
+write.table(SparXCC_output_night, file = "SparXCC_output_night.txt", sep = "\t")
+```
+
+Since we noticed that the difference of numbers of cross-correlations between day and night samples is too high, we decided to run the SparXCC with the same plots for both day and night.
+
+```{r}
+# Find intersection of OTUs between day and night samples
+common_plots <- intersect(colnames(wallace_otu_counts_filtered_day), colnames(wallace_otu_counts_filtered_night))
+common_plots
+
+# Select columns based on vector
+wallace_otu_counts_filtered_day_common_plots <- wallace_otu_counts_filtered_day[ , common_plots]
+wallace_otu_counts_filtered_night_common_plots <- wallace_otu_counts_filtered_night[ , common_plots]
+kremling_expression_counts_filtered_day_common_plots <- kremling_expression_counts_filtered_day[ , common_plots]
+kremling_expression_counts_filtered_night_common_plots <- kremling_expression_counts_filtered_night[ , common_plots]
+
+head(wallace_otu_counts_filtered_day_common_plots)
+head(kremling_expression_counts_filtered_day_common_plots)
+
+# Check if columns are the same and in the same order
+identical(colnames(wallace_otu_counts_filtered_day_common_plots), colnames(kremling_expression_counts_filtered_day_common_plots))
+identical(colnames(wallace_otu_counts_filtered_night_common_plots), colnames(kremling_expression_counts_filtered_night_common_plots))
+
+# Transpose dataframes
+wallace_otu_counts_filtered_day_common_plots_transposed <- t(wallace_otu_counts_filtered_day_common_plots)
+wallace_otu_counts_filtered_night_common_plots_transposed <- t(wallace_otu_counts_filtered_night_common_plots)
+kremling_expression_counts_filtered_day_common_plots_transposed <- t(kremling_expression_counts_filtered_day_common_plots)
+kremling_expression_counts_filtered_night_common_plots_transposed <- t(kremling_expression_counts_filtered_night_common_plots)
+```
+
+Running SparXCC with the same plots for both day and night samples:
+
+```{r}
+SparXCC_output_common_plots_day <- SparXCC_base(wallace_otu_counts_filtered_day_common_plots_transposed,
+                        kremling_expression_counts_filtered_day_common_plots_transposed,
+                        pseudo_count = 1,
+                        var_min = 1e-05,
+                        Find_m = TRUE,
+                        B_m = 100,
+			            cores = 8)
+write.table(SparXCC_output_common_plots_day, file = "SparXCC_output_day_common_samples.txt", sep = "\t")
+
+SparXCC_output_common_plots_night <- SparXCC_base(wallace_otu_counts_filtered_night_common_plots_transposed,
+                        kremling_expression_counts_filtered_night_common_plots_transposed,
+                        pseudo_count = 1,
+                        var_min = 1e-05,
+                        Find_m = TRUE,
+                        B_m = 100,
+			            cores = 8)
+write.table(SparXCC_output_common_plots_night, file = "SparXCC_output_night_common_samples.txt", sep = "\t")
+```
+
+## Visualizing SparXCC results
+
+Importing the edge list files for the day and night samples using the same/common plots (n = 174):
+
+```{r}
+sparxcc_day_common_samples <- read.csv("/home/renato/projects/fapesp_bepe_pd/integration_transcriptome_microbiome/SparXCC_output_day_common_samples_edgelist.tsv", sep="\t", header=TRUE)
+sparxcc_night_common_samples <- read.csv("/home/renato/projects/fapesp_bepe_pd/integration_transcriptome_microbiome/SparXCC_output_night_common_samples_edgelist.tsv", sep="\t", header=TRUE)
+```
+
+Distribution of correlations from the edge list:
+
+```{r}
+library(ggplot2)
+
+# Add a column to indicate positive or negative correlation
+sparxcc_day_common_samples$correlation_type <- ifelse(sparxcc_day_common_samples$CorrelationCoefficient > 0, "Positive", "Negative")
+sparxcc_night_common_samples$correlation_type <- ifelse(sparxcc_night_common_samples$CorrelationCoefficient > 0, "Positive", "Negative")
+
+# Plot histogram
+png(filename = "day_sparxcc_dist.png")
+ggplot(sparxcc_day_common_samples, aes(x = CorrelationCoefficient, fill = correlation_type)) +
+    geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) +
+    scale_fill_manual(values = c("Positive" = "blue", "Negative" = "red")) +
+    labs(title = "Distribution of SparXCC Correlations (Day)",
+             x = "Correlation",
+             y = "Frequency",
+             fill = "Correlation Type") +
+    theme_minimal()
+dev.off()
+
+png(filename = "night_sparxcc_dist.png")
+ggplot(sparxcc_night_common_samples, aes(x = CorrelationCoefficient, fill = correlation_type)) +
+    geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) +
+    scale_fill_manual(values = c("Positive" = "blue", "Negative" = "red")) +
+    labs(title = "Distribution of SparXCC Correlations (Night)",
+             x = "Correlation",
+             y = "Frequency",
+             fill = "Correlation Type") +
+    theme_minimal()
+dev.off()
+```
+
+
+## Clustering the bi-partite networks generated in SparXCC
+
+Creating the bi-partite networks for day and night edge lists:
+
+```{r}
+library(igraph)
+
+# Assigning the node types
+day_node_types <- c(
+  setNames(rep(TRUE, length(unique(sparxcc_day_common_samples$OTU))), unique(sparxcc_day_common_samples$OTU)),  # OTU (TRUE)
+  setNames(rep(FALSE, length(unique(sparxcc_day_common_samples$Gene))), unique(sparxcc_day_common_samples$Gene))  # Gene (FALSE)
+)
+night_node_types <- c(
+  setNames(rep(TRUE, length(unique(sparxcc_night_common_samples$OTU))), unique(sparxcc_night_common_samples$OTU)),  # OTU (TRUE)
+  setNames(rep(FALSE, length(unique(sparxcc_night_common_samples$Gene))), unique(sparxcc_night_common_samples$Gene))  # Gene (FALSE)
+)
+
+# Convert correlations to absolute values
+sparxcc_day_common_samples$CorrelationCoefficient <- abs(sparxcc_day_common_samples$CorrelationCoefficient)
+sparxcc_night_common_samples$CorrelationCoefficient <- abs(sparxcc_night_common_samples$CorrelationCoefficient)
+
+# Creating the graph objects considering absolute values only (magnitude of associations are revelant)
+day_bipartite_graph_abs <- graph_from_data_frame(d = sparxcc_day_common_samples, directed = FALSE)
+night_bipartite_graph_abs <- graph_from_data_frame(d = sparxcc_night_common_samples, directed = FALSE)
+
+# Assigning the node types
+V(day_bipartite_graph_abs)$type <- day_node_types[V(day_bipartite_graph_abs)$name]
+E(day_bipartite_graph_abs)$cor <- sparxcc_day_common_samples$CorrelationCoefficient
+V(night_bipartite_graph_abs)$type <- night_node_types[V(night_bipartite_graph_abs)$name]
+E(night_bipartite_graph_abs)$cor <- sparxcc_night_common_samples$CorrelationCoefficient
+```
+
+Generating the biadjacency matrix and computing network modules:
+
+```{r}
+install.packages("bipartite")
+library(bipartite)
+
+# bipartite uses a biadjacency matrix to represent the network
+# Converting the graph to a biadjacency matrix using igraph function
+day_biadjacency_abs <- as_biadjacency_matrix(day_bipartite_graph_abs,
+                      types = V(day_bipartite_graph_abs)$type, # Node types (OTU and Gene)
+                      attr="cor") # Correlations (absolute values)
+night_biadjacency_abs <- as_biadjacency_matrix(night_bipartite_graph_abs,
+                      types = V(night_bipartite_graph_abs)$type, # Node types (OTU and Gene)
+                      attr="cor") # Correlations (absolute values)
+
+# Compute network modules
+day_modules_abs <- metaComputeModules(day_biadjacency_abs,
+                                  method="Beckett",
+                                  forceLPA=FALSE,
+                                  N=100)
+night_modules_abs <- metaComputeModules(night_biadjacency_abs,
+                                  method="Beckett",
+                                  forceLPA=FALSE,
+                                  N=100)
+
+node_information_day_modules_abs <- listModuleInformation(day_modules_abs)
+node_information_night_modules_abs <- listModuleInformation(night_modules_abs)
+
+
+
+
+```
