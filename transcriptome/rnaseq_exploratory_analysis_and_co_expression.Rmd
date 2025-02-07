@@ -210,7 +210,8 @@ head(all_cor_matrix_tri)
 ```
 
 
-For the edge selection step, we used a correlation threshold of 0.7, as recommended by Dr. Chenxin Li:
+For the edge selection step, we used a correlation threshold of 0.7, same used by Dr. Chenxin Li.
+(for the next analyses, it would be important to try an empirical approach to select the best threshold).
 
 ```{r}
 
@@ -275,7 +276,7 @@ Creating node list with maize functional annotation, when available.
 The `kremling_expression_v5_tpm_filtered_cv_filtered_annotations.txt` file is just a two-column file with gene name and annotation as in the file used as gene descriptions in CoNekT Grasses.
 
 ```{r}
-maize_funct_anno <- read_delim("kremling_expression_v5_tpm_filtered_cv_filtered_annotations.txt", delim = "\t", col_names = F, col_types = cols())
+maize_funct_anno <- read_delim("/home/renato/projects/fapesp_bepe_pd/maize_data/Zma_cds_descriptions.txt", delim = "\t", col_names = F, col_types = cols())
 head(maize_funct_anno)
 
 day_node_table <- data.frame(
@@ -416,7 +417,7 @@ Optimize_num_module_all <- optimization_results_all %>%
   ggplot(aes(x = resolution, y = num_module)) +
   geom_line(size = 1.1, alpha = 0.8, color = "dodgerblue2") +
   geom_point(size = 3, alpha = 0.7) +
-  geom_vline(xintercept = 10.25, size = 1, linetype = 4) +
+  geom_vline(xintercept = 3, size = 1, linetype = 4) +
   labs(x = "resolution parameter",
        y = "num. modules\nw/ >=5 genes") +
   theme_classic() +
@@ -429,7 +430,7 @@ Optimize_num_gene_all <- optimization_results_all %>%
   ggplot(aes(x = resolution, y = num_contained_gene)) +
   geom_line(size = 1.1, alpha = 0.8, color = "violetred2") +
   geom_point(size = 3, alpha = 0.7) +
-  geom_vline(xintercept = 10.25, size = 1, linetype = 4) +
+  geom_vline(xintercept = 3, size = 1, linetype = 4) +
   labs(x = "resolution parameter",
        y = "num. genes in\nmodules w/ >=5 genes") +
   theme_classic() +
@@ -438,7 +439,9 @@ Optimize_num_gene_all <- optimization_results_all %>%
     axis.text = element_text(color = "black")
   )
 
+png(filename = "resolution_clustering_coexp_all.png")
 wrap_plots(Optimize_num_module_all, Optimize_num_gene_all, nrow = 2)
+dev.off()
 ```
 
 ```{r}
@@ -504,7 +507,7 @@ wrap_plots(Optimize_num_module_night, Optimize_num_gene_night, nrow = 2)
 Running the actual clustering analysis with the selected resolution parameters:
 
 ```{r}
-all_net_modules <- cluster_leiden(all_network, resolution_parameter = 10.25,
+all_net_modules <- cluster_leiden(all_network, resolution_parameter = 3,
                           objective_function = "modularity")
 day_net_modules <- cluster_leiden(day_network, resolution_parameter = 6.25,
                           objective_function = "modularity")
@@ -630,7 +633,7 @@ Exp_table_long_z <- Exp_table_long_z %>%
 dim(Exp_table_long_z)
 head(Exp_table_long_z)
 
-write.table(Exp_table_long_z, file = "Exp_table_long_z.txt", sep = "\t", quote = F, row.names = F)
+write.table(Exp_table_long_z, file = "/home/renato/projects/fapesp_bepe_pd/transcriptome/Exp_table_long_z.txt", sep = "\t", quote = F, row.names = F)
 
 # Getting details about the t.test function
 ?t.test
@@ -650,60 +653,33 @@ modules_t_test <- Exp_table_long_z %>%
   filter(abs(log_fold_change) > 1) %>%
   arrange(desc(abs(log_fold_change)))
 
-write.table(modules_t_test, file = "modules_t_test.txt", sep = "\t", quote = F, row.names = F)
+write.table(modules_t_test, file = "/home/renato/projects/fapesp_bepe_pd/transcriptome/modules_t_test.txt", sep = "\t", quote = F, row.names = F)
 
-# Plotting z-scores for each module
-p <- ggplot(Exp_table_long_z, aes(x = SampleName, y = z.score)) +
-  facet_wrap(~module, scales = "free_x") +  # Facet by module
-  geom_line(aes(group = Name), alpha = 0.3, color = "grey70") +
-  labs(
-    x = NULL,
-    y = "z-score"
-  ) +
-  theme_classic() +
-  theme(
-    text = element_text(size = 6),
-    axis.text.x = element_blank(),
-    panel.spacing = unit(1, "line")
-  )
+# Plotting value distribution of two groups in different gene modules
+plot_module_distribution <- function(module_number) {
+  module_data <- Exp_table_long_z %>% filter(module == module_number)
+  gene_count <- module_data %>% select(Name) %>% distinct() %>% nrow()
+  
+  ggplot(module_data, aes(x = DayPeriod, y = z.score, fill = DayPeriod, color = Name)) +
+    geom_boxplot() +
+    geom_jitter(width = 0.2, alpha = 0.5) +
+    scale_fill_manual(values = c("day" = "skyblue", "night" = "orange")) +
+    labs(title = paste("Module", module_number, "Z-score (", gene_count, " genes)", sep = " "),
+         x = "Day Period",
+         y = "Z-score") +
+    theme_classic() +
+    theme(
+      text = element_text(size = 14),
+      axis.text = element_text(color = "black"),
+      legend.position = "none"
+    )
+}
 
-ggsave("plot.pdf", plot = p, width = 20, height = 10)
-ggsave("plot.png", plot = p, width = 20, height = 10)
-
-# Create a named vector of colors based on DayPeriod
-# This vector will be the same for any module
-sample_colors <- Exp_table_long_z %>%
-  filter(module == 64) %>%
-  distinct(SampleName, DayPeriod) %>%
-  mutate(color = ifelse(DayPeriod == "day", "gold", "blue")) %>%  # Map "Day" to gold and "Night" to blue
-  select(SampleName, color) %>%  # Keep only SampleName and color columns
-  deframe()
-
-# Plot z-scores for each gene in module 118
-p_single_module <- Exp_table_long_z %>% 
-  filter(module == 118) %>% 
-  ggplot(aes(x = SampleName, y = z.score)) +
-  geom_line(aes(group = Name), alpha = 0.3, color = "grey70") +
-  stat_summary(fun = mean, aes(group = 1), geom = "line", color = "black", size = 1.2) +
-  labs(
-    x = NULL,
-    y = "z-score",
-    title = "Module 118"
-  ) +
-  theme_classic() +
-  theme(
-    text = element_text(size = 14),
-    axis.text.x = element_text(
-      size = 4,
-      angle = 90,
-      hjust = 1,
-      color = sample_colors[levels(factor(Exp_table_long_z$SampleName))]
-    ),
-    axis.ticks.x = element_blank(),
-    panel.spacing = unit(1, "line")
-  )
-
-ggsave("plot2_mod118_means.pdf", plot = p_single_module, width = 20, height = 10)
-ggsave("plot2_mod118_means.png", plot = p_single_module, width = 20, height = 10)
+# Plotting value distribution of all significant modules
+significant_modules <- sort(modules_t_test$module)
+all_plots <- purrr::map(significant_modules, plot_module_distribution)
+png(filename = "modules_day_periods_all.png", width = 1200, height = 1600)
+wrap_plots(all_plots, ncol = 2)
+dev.off()
 ```
 
