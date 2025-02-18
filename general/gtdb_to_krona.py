@@ -58,20 +58,30 @@ with open(gtdb_taxonomy_file, 'r') as infile:
                 otu_taxonomy_dict[otu]['class'] = taxon_class
         
         if not domain_found:
-            otu_taxonomy_dict[otu]['domain'] = ''
+            otu_taxonomy_dict[otu]['domain'] = 'Unclassified'
 
         if not phylum_found:
-            otu_taxonomy_dict[otu]['phylum'] = ''
+            otu_taxonomy_dict[otu]['phylum'] = 'Unclassified'
         
         if not class_found:
-            otu_taxonomy_dict[otu]['class'] = ''
+            otu_taxonomy_dict[otu]['class'] = 'Unclassified'
 
 count_class = {}
 class2phylum = {}
+unclass2phylum = {}
 class2domain = {}
 
 for otu in otu_taxonomy_dict.keys():
-    if otu_taxonomy_dict[otu]['class'] in count_class.keys():
+    # Treating unclassified classes
+    if otu_taxonomy_dict[otu]['class'] == 'Unclassified':
+        if otu_taxonomy_dict[otu]['domain']+"\t"+otu_taxonomy_dict[otu]['phylum']+"\tUnclassified" in unclass2phylum.keys():
+            unclass2phylum[otu_taxonomy_dict[otu]['domain']+"\t"+otu_taxonomy_dict[otu]['phylum']+"\tUnclassified"] += 1
+        else:
+            unclass2phylum[otu_taxonomy_dict[otu]['domain']+"\t"+otu_taxonomy_dict[otu]['phylum']+"\tUnclassified"] = 1
+        continue
+
+    # Treating classified classes
+    elif otu_taxonomy_dict[otu]['class'] in count_class.keys():
         count_class[otu_taxonomy_dict[otu]['class']] += 1
     else:
         count_class[otu_taxonomy_dict[otu]['class']] = 1
@@ -94,5 +104,8 @@ for otu in otu_taxonomy_dict.keys():
         if otu_taxonomy_dict[otu]['domain']:
             class2domain[otu_taxonomy_dict[otu]['class']] = otu_taxonomy_dict[otu]['domain']
 
-for taxon_class in count_class.keys():
-    print(f'{count_class[taxon_class]}\t{class2domain[taxon_class]}\t{class2phylum[taxon_class]}\t{taxon_class}')
+with open(krona_txt_file, 'w') as outfile:
+    for taxon_class in count_class.keys():
+        outfile.write(f'{count_class[taxon_class]}\t{class2domain[taxon_class]}\t{class2phylum[taxon_class]}\t{taxon_class}\n')
+    for unclass in unclass2phylum.keys():
+        outfile.write(f'{unclass2phylum[unclass]}\t{unclass}\n')
