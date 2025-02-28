@@ -1,0 +1,54 @@
+---
+title: "Enrichment Analysis of Particular Taxonomy rank for potential keystone taxa"
+output: html_notebook
+---
+
+Among the OTUs selected for co-occurrence network analysis and identificatio of potential keystone taxa, we identified a significant number of potential connectors.
+
+Enrichment analysis could help us to identify potentially relevant genera in the community, for each day period.
+
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+# Alternative method to install the package fgsea, required for installing clusterProfiler
+#remotes::install_github("ctlab/fgsea")
+BiocManager::install("clusterProfiler")
+```
+
+A simple enrichment analysis will be carried out with the universal enrichment analyzer `enricher`:
+
+```{r}
+library(clusterProfiler)
+
+#term2genes_df <- read.table("/home/renato/repositories/maize_transcriptome_microbiome_networks/general/otus_genus.txt",
+#term2genes_df <- read.table("/home/renato/repositories/maize_transcriptome_microbiome_networks/general/otus_family.txt",
+term2genes_df <- read.table("/home/renato/repositories/maize_transcriptome_microbiome_networks/general/otus_order.txt",
+                header = FALSE, sep = "\t")
+
+all_otus_enrichment <- as.vector(read.table("/home/renato/projects/fapesp_bepe_pd/microbiome/day_network_zi_pi_metrics.tsv",
+                header = TRUE, sep = "\t"))$Node
+
+day_network_zi_pi_metrics <- read.table("/home/renato/projects/fapesp_bepe_pd/microbiome/day_network_zi_pi_metrics.tsv",
+                header = TRUE, sep = "\t")
+night_network_zi_pi_metrics <- read.table("/home/renato/projects/fapesp_bepe_pd/microbiome/night_network_zi_pi_metrics.tsv",
+                header = TRUE, sep = "\t")
+
+head(day_network_zi_pi_metrics)
+
+day_connectors <- subset(day_network_zi_pi_metrics, Zi < 2.5 & Pi > 0.62)
+night_connectors <- subset(night_network_zi_pi_metrics, Zi < 2.5 & Pi > 0.62)
+
+enricher(gene = as.vector(day_connectors$Node),
+         pvalueCutoff = 0.05,
+         pAdjustMethod = "BH",
+         universe = all_otus_enrichment,
+         TERM2GENE = term2genes_df)
+
+enricher(gene = as.vector(night_connectors$Node),
+         pvalueCutoff = 0.05,
+         pAdjustMethod = "BH",
+         universe = all_otus_enrichment,
+         TERM2GENE = term2genes_df)
+```
+

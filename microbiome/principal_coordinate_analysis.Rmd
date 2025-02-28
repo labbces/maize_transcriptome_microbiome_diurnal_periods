@@ -1,0 +1,84 @@
+---
+title: "Principal Coordinate Analysis (PCoA) of the microbiome data"
+output: html_notebook
+---
+
+A Principal Coordinate Analysis (PCoA) using Aitchison distances will be performed with the microbiome data to understand how samples are grouped.
+[Quinn et al 2018](https://doi.org/10.1093/bioinformatics/bty175) is one example of paper discussing the use of Aitchison distances in analysis of compositional sequencing data.
+
+The beta-diversity chapter of [introduction to microbiome data science](https://microbiome.github.io/course_2021_radboud/beta-diversity.html) provides a detailed description of how to do it.
+
+They used mia package to transform microbial counts (CLR), followed by computing the Euclidean distance (using vegan) and the actual PCoA (with ecodist).
+
+```{r}
+# Installing required packages
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("mia")
+```
+
+Importing libraries:
+
+```{r}
+#library(mia)
+library(compositions)
+library(vegan)
+library(ecodist)
+library(ggplot2)
+```
+
+
+
+```{r}
+otu_counts_table <- read.table("/home/renato/projects/fapesp_bepe_pd/microbiome/2f_otu_table.sample_filtered.no_mitochondria_chloroplast.tsv",
+                               header=TRUE, row.names=1, sep="\t")
+head(otu_counts_table)
+
+# CLR transformation
+#otu_counts_table_clr <- transformCounts(otu_counts_table, method = "clr", pseudocount = 1)
+# After CLR transformation with pseudocount (1), the aitchison distance can be calculated using Euclidean distance.
+# However, it can be done directly using vegdist function from vegan package below
+
+# The vegdist function requires the samples as rows and the OTUs as columns
+otu_counts_table_transposed <- t(otu_counts_table)
+
+dim(otu_counts_table_transposed)
+head(otu_counts_table_transposed)
+
+otu_counts_table_aitchison <- vegdist(otu_counts_table_transposed, method="aitchison", pseudocount=1)
+
+# Running PCoA from the ecodist package
+aitchison_pcoa <- pco(otu_counts_table_aitchison)
+
+# Creates a data frame from principal coordinates
+aitchison_pcoa_df <- data.frame(pcoa1 = aitchison_pcoa$vectors[,1], 
+                                pcoa2 = aitchison_pcoa$vectors[,2])
+
+# Creates the plot
+aitchison_plot <- ggplot(data = aitchison_pcoa_df, aes(x=pcoa1, y=pcoa2)) +
+  geom_point() +
+  labs(x = "PC1",
+       y = "PC2",
+       title = "Aitchison PCoA") +
+  theme(title = element_text(size = 12)) # makes titles smaller
+
+aitchison_plot
+
+# Adding a new column to the dataframe based on a pattern in the row names
+aitchison_pcoa_df$sample_group <- ifelse(grepl("LMAD", row.names(aitchison_pcoa$vectors)), "Day",
+                                         ifelse(grepl("LMAN", row.names(aitchison_pcoa$vectors)), "Night", "Other"))
+
+head(aitchison_pcoa_df)
+
+aitchison_day_period_plot <- ggplot(data = aitchison_pcoa_df, 
+                                        aes(x=pcoa1, y=pcoa2,
+                                            color = sample_group)) +
+  geom_point() +
+  labs(x = "PC1",
+       y = "PC2",
+       title = "Aitchison PCoA (coloring day periods)") +
+  theme(title = element_text(size = 12)) # makes titles smaller
+
+aitchison_day_period_plot
+```
