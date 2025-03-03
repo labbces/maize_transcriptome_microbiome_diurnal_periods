@@ -1,0 +1,48 @@
+---
+title: "Violin plots of clusters responding to day/night in co-expression network"
+output: html_notebook
+---
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Import the table
+Exp_table_long_z <- read.csv("/home/renato/projects/fapesp_bepe_pd/transcriptome/Exp_table_long_z.txt",
+                 sep = "\t",
+                 header = TRUE)
+
+# Display the first few rows of the data
+head(Exp_table_long_z)
+
+day_period_responding_modules <- c(10,12,16,1,22,25,26,29,30,31,39,40,45,52,5,7,8,9)
+
+# Filter the data based on the list of modules
+Exp_table_long_z_filtered <- Exp_table_long_z %>%
+    filter(module %in% day_period_responding_modules)
+
+# Display the first few rows of the data
+head(Exp_table_long_z)
+dim(Exp_table_long_z)
+
+# Display the first few rows of the filtered data
+head(Exp_table_long_z_filtered)
+dim(Exp_table_long_z_filtered)
+```
+
+```{r}
+# Create violin plots for each module
+png("violin_plots_day_night.png")
+Exp_table_long_z_filtered %>%
+    ggplot(aes(x = factor(DayPeriod), y = z.score, fill = factor(DayPeriod))) +
+    geom_violin() +
+    facet_wrap(~ module, scales = "free_y") +
+    labs(title = "Co-expression clusters responding to day/night",
+             x = "Clusters",
+             y = "Z-score of Log2(TPM) values") +
+    theme_minimal() +
+    theme(legend.position = "none")
+
+dev.off()
+```
