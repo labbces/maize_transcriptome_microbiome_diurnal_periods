@@ -12,10 +12,11 @@ They used mia package to transform microbial counts (CLR), followed by computing
 
 ```{r}
 # Installing required packages
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+#if (!require("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
 
-BiocManager::install("mia")
+#BiocManager::install("mia")
+#install.packages("ecodist")
 ```
 
 Importing libraries:
@@ -31,7 +32,7 @@ library(ggplot2)
 
 
 ```{r}
-otu_counts_table <- read.table("/home/renato/projects/fapesp_bepe_pd/microbiome/2f_otu_table.sample_filtered.no_mitochondria_chloroplast.tsv",
+otu_counts_table <- read.table("/home/santosrac/Projects/UGA_RACS/16S/otu_matrices/2f_otu_table.sample_filtered.no_mitochondria_chloroplast.tsv",
                                header=TRUE, row.names=1, sep="\t")
 head(otu_counts_table)
 
@@ -71,7 +72,8 @@ aitchison_pcoa_df$sample_group <- ifelse(grepl("LMAD", row.names(aitchison_pcoa$
 
 head(aitchison_pcoa_df)
 
-aitchison_day_period_plot <- ggplot(data = aitchison_pcoa_df, 
+png("aitchison_pcoa.png", width=800, height=800, res=100)
+ggplot(data = aitchison_pcoa_df, 
                                         aes(x=pcoa1, y=pcoa2,
                                             color = sample_group)) +
   geom_point() +
@@ -80,5 +82,5 @@ aitchison_day_period_plot <- ggplot(data = aitchison_pcoa_df,
        title = "Aitchison PCoA (coloring day periods)") +
   theme(title = element_text(size = 12)) # makes titles smaller
 
-aitchison_day_period_plot
+dev.off()
 ```
