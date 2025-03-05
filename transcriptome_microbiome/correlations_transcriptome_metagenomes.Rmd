@@ -1,0 +1,109 @@
+---
+title: "SparCEV Correlations"
+output: html_notebook
+---
+
+```{r}
+library(CompoCor)
+```
+
+```{r}
+kremling_expression_counts_filtered <- read.csv("/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/kremling_expression_v5_counts_filtered_cv_filtered.tsv", sep="\t", header=TRUE, row.names=1)
+head(kremling_expression_counts_filtered)
+
+kremling_expression_counts_filtered_day <- kremling_expression_counts_filtered[, grep("day", names(kremling_expression_counts_filtered), value = TRUE)]
+kremling_expression_counts_filtered_night <- kremling_expression_counts_filtered[, grep("night", names(kremling_expression_counts_filtered), value = TRUE)]
+
+head(kremling_expression_counts_filtered_day)
+dim(kremling_expression_counts_filtered_day)
+colnames(kremling_expression_counts_filtered_day) <- gsub("exp_day_", "", colnames(kremling_expression_counts_filtered_day))
+head(kremling_expression_counts_filtered_day)
+
+head(kremling_expression_counts_filtered_night)
+dim(kremling_expression_counts_filtered_night)
+colnames(kremling_expression_counts_filtered_night) <- gsub("exp_night_", "", colnames(kremling_expression_counts_filtered_night))
+head(kremling_expression_counts_filtered_night)
+```
+
+```{r}
+# Kegg terms associated with nitrotoluene degradation were selected before importing the data
+predicted_microbiome_wallace2018 <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/predicted_metagenome/4l_nitrotoluene.filtered.txt", sep="\t", header=TRUE, row.names=1)
+head(predicted_microbiome_wallace2018)
+dim(predicted_microbiome_wallace2018)
+
+predicted_microbiome_wallace2018_day <- predicted_microbiome_wallace2018[, grep("LMAD", names(predicted_microbiome_wallace2018), value = TRUE)]
+dim(predicted_microbiome_wallace2018_day)
+predicted_microbiome_wallace2018_night <- predicted_microbiome_wallace2018[, grep("LMAN", names(predicted_microbiome_wallace2018), value = TRUE)]
+dim(predicted_microbiome_wallace2018_night)
+
+# Renaming the column names of the predicted metagenome data to match the RNA-seq dataframe
+colnames(predicted_microbiome_wallace2018_day) <- gsub("LMAD.", "", colnames(predicted_microbiome_wallace2018_day))
+head(predicted_microbiome_wallace2018_day)
+colnames(predicted_microbiome_wallace2018_night) <- gsub("LMAN.", "", colnames(predicted_microbiome_wallace2018_night))
+head(predicted_microbiome_wallace2018_night)
+
+rearrange_column_names <- function(df) {
+    new_colnames <- sapply(colnames(df), function(name) {
+        parts <- unlist(strsplit(name, "\\."))
+        paste(parts[2], parts[1], sep = "_")
+    })
+    colnames(df) <- new_colnames
+    return(df)
+}
+
+predicted_microbiome_wallace2018_day_renamedcols <- rearrange_column_names(predicted_microbiome_wallace2018_day)
+head(predicted_microbiome_wallace2018_day_renamedcols) # 14A0325_8 14A0043_8 14A0033_8 14A0105_8 14A0009_8 14A0007_8
+dim(predicted_microbiome_wallace2018_day_renamedcols)
+head(predicted_microbiome_wallace2018_day) # 8.14A0325 8.14A0043 8.14A0033 8.14A0105 8.14A0009 8.14A0007
+dim(predicted_microbiome_wallace2018_day)
+
+predicted_microbiome_wallace2018_night_renamedcols <- rearrange_column_names(predicted_microbiome_wallace2018_night)
+```
+
+```{r}
+# Keeping only samples with a correspondence in the other dataset (RNA-seq)
+predicted_microbiome_wallace2018_day_renamedcols <- predicted_microbiome_wallace2018_day_renamedcols[ , intersect(colnames(predicted_microbiome_wallace2018_day_renamedcols), colnames(kremling_expression_counts_filtered_day))]
+dim(predicted_microbiome_wallace2018_day_renamedcols)
+predicted_microbiome_wallace2018_night_renamedcols <- predicted_microbiome_wallace2018_night_renamedcols[ , intersect(colnames(predicted_microbiome_wallace2018_night_renamedcols), colnames(kremling_expression_counts_filtered_night))]
+dim(predicted_microbiome_wallace2018_night_renamedcols)
+
+# Keeping only samples with a correspondence in the other dataset (predicted metagenomes)
+kremling_expression_counts_filtered_day_metagenomes <- kremling_expression_counts_filtered_day[, colnames(predicted_microbiome_wallace2018_day_renamedcols)]
+kremling_expression_counts_filtered_night_metagenomes <- kremling_expression_counts_filtered_night[, colnames(predicted_microbiome_wallace2018_night_renamedcols)]
+
+dim(kremling_expression_counts_filtered_day_metagenomes)
+dim(kremling_expression_counts_filtered_night_metagenomes)
+
+# Check if columns of two dataframes are in the same order
+identical(colnames(predicted_microbiome_wallace2018_day_renamedcols), colnames(kremling_expression_counts_filtered_day_metagenomes))
+identical(colnames(predicted_microbiome_wallace2018_night_renamedcols), colnames(kremling_expression_counts_filtered_night_metagenomes))
+all(colnames(predicted_microbiome_wallace2018_day_renamedcols) == colnames(kremling_expression_counts_filtered_day_metagenomes))
+all(colnames(predicted_microbiome_wallace2018_night_renamedcols) == colnames(kremling_expression_counts_filtered_night_metagenomes))
+```
+
+```{r}
+
+# Transpose dataframes
+predicted_microbiome_wallace2018_day_renamedcols_transposed <- t(predicted_microbiome_wallace2018_day_renamedcols)
+predicted_microbiome_wallace2018_night_renamedcols_transposed <- t(predicted_microbiome_wallace2018_night_renamedcols)
+kremling_expression_counts_filtered_day_metagenomes_transposed <- t(kremling_expression_counts_filtered_day_metagenomes)
+kremling_expression_counts_filtered_night_metagenomes_transposed <- t(kremling_expression_counts_filtered_night_metagenomes)
+
+SparXCC_nitrotoluene_degradation_day <- SparXCC_base(predicted_microbiome_wallace2018_day_renamedcols_transposed,
+                        kremling_expression_counts_filtered_day_metagenomes_transposed,
+                        pseudo_count = 1,
+                        var_min = 1e-05,
+                        Find_m = TRUE,
+                        B_m = 100,
+			            cores = 8)
+write.table(SparXCC_nitrotoluene_degradation_day, file = "SparXCC_nitrotoluene_degradation_day.txt", sep = "\t")
+
+SparXCC_nitrotoluene_degradation_night <- SparXCC_base(predicted_microbiome_wallace2018_night_renamedcols_transposed,
+                        kremling_expression_counts_filtered_night_metagenomes_transposed,
+                        pseudo_count = 1,
+                        var_min = 1e-05,
+                        Find_m = TRUE,
+                        B_m = 100,
+			            cores = 8)
+write.table(SparXCC_nitrotoluene_degradation_night, file = "SparXCC_nitrotoluene_degradation_night.txt", sep = "\t")
+```
