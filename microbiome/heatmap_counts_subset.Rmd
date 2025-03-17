@@ -1,0 +1,189 @@
+---
+title: "Heatmaps for day and night samples in Wallace et al (2018) with paired RNA-Seq"
+output: html_notebook
+---
+
+Add description here
+
+```{r}
+#install.packages("pheatmap")
+library(pheatmap)
+```
+
+
+Importing the OTU tables for day and night samples:
+
+```{r}
+# Import the OTU table with all samples
+otu_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/16S/otu_matrices/2f_otu_table.sample_filtered.no_mitochondria_chloroplast.tsv', sep='\t', header=TRUE, row.names=1)
+head(otu_wallace2018)
+# Sum all values in the dataframe
+sum_otu_wallace2018 <- sum(otu_wallace2018, na.rm = TRUE)
+sum_otu_wallace2018
+
+# Import the OTU table with day and night samples after filtering steps
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
+colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^", "day_", colnames(day_otu_filtered_sparxcc_wallace2018))
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
+colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^", "night_", colnames(night_otu_filtered_sparxcc_wallace2018))
+head(day_otu_filtered_sparxcc_wallace2018)
+head(night_otu_filtered_sparxcc_wallace2018)
+
+# Merge the day and night dataframes by row names
+merged_otu_filtered_sparxcc_wallace2018 <- merge(day_otu_filtered_sparxcc_wallace2018, night_otu_filtered_sparxcc_wallace2018, by = "row.names", all = TRUE)
+rownames(merged_otu_filtered_sparxcc_wallace2018) <- merged_otu_filtered_sparxcc_wallace2018$Row.names
+merged_otu_filtered_sparxcc_wallace2018 <- merged_otu_filtered_sparxcc_wallace2018[ , -1]
+dim(merged_otu_filtered_sparxcc_wallace2018)
+head(merged_otu_filtered_sparxcc_wallace2018)
+sum_otu_wallace2018_filtered <- sum(merged_otu_filtered_sparxcc_wallace2018, na.rm = TRUE)
+
+# Number of OTUs in respect to the original OTU table
+# (28.24M/45.44M)*100
+(sum_otu_wallace2018_filtered / sum_otu_wallace2018) * 100
+
+# Import relative abundances and select based on OTU names
+otu_rel_abund_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/16S/otu_matrices/paper2025/paired_otu_table_day_night_rel_abund.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(otu_rel_abund_sparxcc_wallace2018) <- gsub("^X", "", colnames(otu_rel_abund_sparxcc_wallace2018))
+
+# Filter the merged dataframe based on the row names of the relative abundance dataframe
+relabund_filtered_merged_otu <- otu_rel_abund_sparxcc_wallace2018[rownames(otu_rel_abund_sparxcc_wallace2018) %in% rownames(merged_otu_filtered_sparxcc_wallace2018), ]
+dim(relabund_filtered_merged_otu)
+head(relabund_filtered_merged_otu)
+
+# Filter the dataframe to keep only columns that end with '_n'
+filtered_merged_otu_n <- relabund_filtered_merged_otu[, grepl("_n$", colnames(relabund_filtered_merged_otu))]
+dim(filtered_merged_otu_n)
+head(filtered_merged_otu_n)
+filtered_merged_otu_d <- relabund_filtered_merged_otu[, grepl("_d$", colnames(relabund_filtered_merged_otu))]
+dim(filtered_merged_otu_d)
+head(filtered_merged_otu_d)
+```
+
+
+```{r}
+gtdb_taxonomy <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/otu_taxonomy/gtdb_taxonomy.tsv", sep='\t', header=TRUE)
+gtdb_taxonomy <- gtdb_taxonomy[, -3]
+rownames(gtdb_taxonomy) <- gtdb_taxonomy$Feature.ID
+head(gtdb_taxonomy)
+
+# Filter gtdb_taxonomy based on the row names of merged_otu_filtered_sparxcc_wallace2018
+filtered_gtdb_taxonomy <- gtdb_taxonomy[rownames(gtdb_taxonomy) %in% rownames(merged_otu_filtered_sparxcc_wallace2018), ]
+dim(filtered_gtdb_taxonomy)
+head(filtered_gtdb_taxonomy)
+
+# Merge the OTU table with the taxonomy table
+merged_otu_taxonomy <- merge(merged_otu_filtered_sparxcc_wallace2018, filtered_gtdb_taxonomy, by = "row.names", all = TRUE)
+rownames(merged_otu_taxonomy) <- merged_otu_taxonomy$Row.names
+merged_otu_taxonomy <- merged_otu_taxonomy[ , -1]
+merged_otu_taxonomy <- merged_otu_taxonomy[, !colnames(merged_otu_taxonomy) %in% c("Feature.ID")]
+dim(merged_otu_taxonomy)
+head(merged_otu_taxonomy)
+
+# Collapse rows (sum values) sharing the same Taxon
+collapsed_otu_taxonomy <- aggregate(. ~ Taxon, data = merged_otu_taxonomy, sum, na.rm = TRUE)
+rownames(collapsed_otu_taxonomy) <- collapsed_otu_taxonomy$Taxon
+collapsed_otu_taxonomy <- collapsed_otu_taxonomy[, -1]
+dim(collapsed_otu_taxonomy)
+```
+
+
+```{r}
+# Change row names by keeping only the last element in the list separated by semicolon
+rownames(collapsed_otu_taxonomy) <- sapply(strsplit(rownames(collapsed_otu_taxonomy), ";"), tail, 1)
+head(collapsed_otu_taxonomy)
+pheatmap(collapsed_otu_taxonomy, scale="column")
+```
+
+
+```{r}
+# Transpose the collapsed_otu_taxonomy dataframe
+transposed_collapsed_otu_taxonomy <- t(collapsed_otu_taxonomy)
+transposed_collapsed_otu_taxonomy <- as.data.frame(transposed_collapsed_otu_taxonomy)
+transposed_collapsed_otu_taxonomy$DayPeriod <- ifelse(grepl("^night_", rownames(transposed_collapsed_otu_taxonomy)), "night", "day")
+transposed_collapsed_otu_taxonomy <- transposed_collapsed_otu_taxonomy[, "DayPeriod", drop = FALSE]
+head(transposed_collapsed_otu_taxonomy)
+tail(transposed_collapsed_otu_taxonomy)
+
+pheatmap(collapsed_otu_taxonomy, scale="column", annotation_col = transposed_collapsed_otu_taxonomy)
+```
+
+```{r}
+collapsed_otu_taxonomy_n <- collapsed_otu_taxonomy[, grepl("^night_", colnames(collapsed_otu_taxonomy))]
+collapsed_otu_taxonomy_d <- collapsed_otu_taxonomy[, grepl("^day_", colnames(collapsed_otu_taxonomy))]
+pdf("collapsed_otu_taxonomy_night.pdf")
+pheatmap(collapsed_otu_taxonomy_n, scale="column", cluster_rows = TRUE, cluster_cols = FALSE, show_colnames = FALSE, main = "Night samples")
+dev.off()
+png("collapsed_otu_taxonomy_night.png")
+pheatmap(collapsed_otu_taxonomy_n, scale="column", cluster_rows = TRUE, cluster_cols = FALSE, show_colnames = FALSE, main = "Night samples")
+dev.off()
+pdf("collapsed_otu_taxonomy_day.pdf")
+pheatmap(collapsed_otu_taxonomy_d, scale="column", cluster_rows = TRUE, cluster_cols = FALSE, show_colnames = FALSE, main = "Day samples")
+dev.off()
+png("collapsed_otu_taxonomy_day.png")
+pheatmap(collapsed_otu_taxonomy_d, scale="column", cluster_rows = TRUE, cluster_cols = FALSE, show_colnames = FALSE, main = "Day samples")
+dev.off()
+```
+
+
+
+```{r}
+day_network_zi_pi_metrics <- read.table("/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/day_network_zi_pi_metrics.tsv",
+                header = TRUE, sep = "\t")
+night_network_zi_pi_metrics <- read.table("/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/night_network_zi_pi_metrics.tsv",
+                header = TRUE, sep = "\t")
+
+day_connectors <- subset(day_network_zi_pi_metrics, Zi < 2.5 & Pi > 0.62)
+night_connectors <- subset(night_network_zi_pi_metrics, Zi < 2.5 & Pi > 0.62)
+dim(day_connectors)
+dim(night_connectors)
+
+# Filter merged_otu_filtered_sparxcc_wallace2018 based on Node columns of day_connectors
+filtered_day_otu_connectors <- day_otu_filtered_sparxcc_wallace2018[rownames(day_otu_filtered_sparxcc_wallace2018) %in% day_connectors$Node, ]
+filtered_night_otu_connectors <- night_otu_filtered_sparxcc_wallace2018[rownames(night_otu_filtered_sparxcc_wallace2018) %in% night_connectors$Node, ]
+
+pdf("scaled_abundance_day_connectors.pdf")
+# Scale the day OTU table
+scaled_day_otu <- scale(day_otu_filtered_sparxcc_wallace2018)
+# Compute mean values of scaled day OTU table
+mean_scaled_day_otu <- colMeans(scaled_day_otu, na.rm = TRUE)
+# Plot grey lines for all rows in scaled day OTU table, Highlight elements in Node column of day_connectors
+matplot(t(scaled_day_otu[rownames(scaled_day_otu) %in% day_connectors$Node, ]), type = "l", lty = 1, col = "grey", xlab = "Samples", ylab = "Scaled Abundance", main = "Scaled Abundance of Day Connectors")
+# Highlight mean values
+lines(mean_scaled_day_otu, type = "l", lty = 1, col = "red", lwd = 2)
+dev.off()
+
+png("scaled_abundance_day_connectors.png")
+# Scale the day OTU table
+scaled_day_otu <- scale(day_otu_filtered_sparxcc_wallace2018)
+# Compute mean values of scaled day OTU table
+mean_scaled_day_otu <- colMeans(scaled_day_otu, na.rm = TRUE)
+# Plot grey lines for all rows in scaled day OTU table, Highlight elements in Node column of day_connectors
+matplot(t(scaled_day_otu[rownames(scaled_day_otu) %in% day_connectors$Node, ]), type = "l", lty = 1, col = "grey", xlab = "Samples", ylab = "Scaled Abundance", main = "Scaled Abundance of Day Connectors")
+# Highlight mean values
+lines(mean_scaled_day_otu, type = "l", lty = 1, col = "red", lwd = 2)
+dev.off()
+
+pdf("scaled_abundance_night_connectors.pdf")
+# Scale the night OTU table
+scaled_night_otu <- scale(night_otu_filtered_sparxcc_wallace2018)
+# Compute mean values of scaled night OTU table
+mean_scaled_night_otu <- colMeans(scaled_night_otu, na.rm = TRUE)
+# Plot grey lines for all rows in scaled night OTU table, Highlight elements in Node column of night_connectors
+matplot(t(scaled_night_otu[rownames(scaled_night_otu) %in% night_connectors$Node, ]), type = "l", lty = 1, col = "grey", xlab = "Samples", ylab = "Scaled Abundance", main = "Scaled Abundance of Night Connectors")
+# Highlight mean values
+lines(mean_scaled_night_otu, type = "l", lty = 1, col = "red", lwd = 2)
+dev.off()
+
+png("scaled_abundance_night_connectors.png")
+# Scale the night OTU table
+scaled_night_otu <- scale(night_otu_filtered_sparxcc_wallace2018)
+# Compute mean values of scaled night OTU table
+mean_scaled_night_otu <- colMeans(scaled_night_otu, na.rm = TRUE)
+# Plot grey lines for all rows in scaled night OTU table, Highlight elements in Node column of night_connectors
+matplot(t(scaled_night_otu[rownames(scaled_night_otu) %in% night_connectors$Node, ]), type = "l", lty = 1, col = "grey", xlab = "Samples", ylab = "Scaled Abundance", main = "Scaled Abundance of Night Connectors")
+# Highlight mean values
+lines(mean_scaled_night_otu, type = "l", lty = 1, col = "red", lwd = 2)
+dev.off()
+```
