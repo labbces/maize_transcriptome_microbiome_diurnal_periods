@@ -3,6 +3,8 @@ title: "Enrichment Analysis of Particular Taxonomy rank for potential keystone t
 output: html_notebook
 ---
 
+# Enrichment Analysis Connectors
+
 Among the OTUs selected for co-occurrence network analysis and identificatio of potential keystone taxa, we identified a significant number of potential connectors.
 
 Enrichment analysis could help us to identify potentially relevant genera in the community, for each day period.
@@ -16,7 +18,9 @@ if (!require("BiocManager", quietly = TRUE))
 BiocManager::install("clusterProfiler")
 ```
 
-A simple enrichment analysis will be carried out with the universal enrichment analyzer `enricher`:
+A simple enrichment analysis will be carried out with the universal enrichment analyzer `enricher`.
+
+`otus_genus.txt` contains the mapping of OTUs to genera and was generated using the `taxonomy_to_enricher.py` script.
 
 ```{r}
 library(clusterProfiler)
@@ -73,3 +77,44 @@ enricher(gene = as.vector(unique(night_cross_correlations$OTU)),
          TERM2GENE = term2genes_df)
 ```
 
+# Enrichment Analysis Predicted Metagenomes
+
+A simple enrichment analysis will also be carried out with the universal enrichment analyzer `enricher` for the KO enrichment analysis.
+
+`otus_ko.txt` contains the mapping of OTUs to KOs and was generated using the `picrus2_ko_to_enrichment.py` script using the output from unstratified picrust2 (`KO_predicted.tsv`).
+
+```{r}
+library(clusterProfiler)
+
+term2genes_df <- read.table("/home/renato/repositories/maize_transcriptome_microbiome_networks/general/otus_ko.txt",
+                header = FALSE, sep = "\t")
+
+all_otus_enrichment <- as.vector(read.table("/home/renato/projects/fapesp_bepe_pd/microbiome/co_occurrence_networks/2/day_network_zi_pi_metrics.tsv",
+                header = TRUE, sep = "\t"))$Node
+
+day_cross_correlations <- read.table("/home/renato/projects/fapesp_bepe_pd/integration_transcriptome_microbiome/transcriptome_microbiome_paper2025/SparXCC_output_day_common_samples_edgelist.tsv",
+                header = TRUE, sep = "\t")
+night_cross_correlations <- read.table("/home/renato/projects/fapesp_bepe_pd/integration_transcriptome_microbiome/transcriptome_microbiome_paper2025/SparXCC_output_night_common_samples_edgelist.tsv",
+                header = TRUE, sep = "\t")
+
+# KO Enrichment of cross-correlations (OTUs)
+day_cross_correlations_ko <- enricher(gene = as.vector(unique(day_cross_correlations$OTU)),
+         pvalueCutoff = 0.05,
+         pAdjustMethod = "BH",
+         universe = all_otus_enrichment,
+         TERM2GENE = term2genes_df)
+
+dim(day_cross_correlations_ko[, c("ID", "pvalue", "p.adjust", "qvalue")])
+
+write.table(day_cross_correlations_ko, file = "day_cross_correlations_ko_enrichment.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+
+night_cross_correlations_ko <- enricher(gene = as.vector(unique(night_cross_correlations$OTU)),
+         pvalueCutoff = 0.05,
+         pAdjustMethod = "BH",
+         universe = all_otus_enrichment,
+         TERM2GENE = term2genes_df)
+
+dim(night_cross_correlations_ko[, c("ID", "pvalue", "p.adjust", "qvalue")])
+
+write.table(night_cross_correlations_ko, file = "night_cross_correlations_ko_enrichment.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+```
