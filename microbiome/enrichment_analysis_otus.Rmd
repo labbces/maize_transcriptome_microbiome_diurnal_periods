@@ -118,3 +118,34 @@ dim(night_cross_correlations_ko[, c("ID", "pvalue", "p.adjust", "qvalue")])
 
 write.table(night_cross_correlations_ko, file = "night_cross_correlations_ko_enrichment.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
 ```
+
+A similar enrichment analysis will be carried out for the pathways associated with KOs obtained from the predicted metagenomes.
+
+`otus_pathway.txt` contains the mapping of OTUs to pathways.
+
+```{r}
+library(clusterProfiler)
+
+term2genes_df <- read.table("/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/general/otus_pathway.txt",
+                header = FALSE, sep = "\t")
+
+all_otus_enrichment <- as.vector(read.table("/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/day_network_zi_pi_metrics.tsv",
+                header = TRUE, sep = "\t"))$Node
+
+day_cross_correlations <- read.table("/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/SparXCC_output_day_common_samples_edgelist.tsv",
+                header = TRUE, sep = "\t")
+night_cross_correlations <- read.table("/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/SparXCC_output_night_common_samples_edgelist.tsv",
+                header = TRUE, sep = "\t")
+
+# Kegg Pathway Enrichment of cross-correlations (OTUs)
+day_cross_correlations_pathways <- enricher(gene = as.vector(unique(day_cross_correlations$OTU)),
+         pvalueCutoff = 0.05,
+         pAdjustMethod = "BH",
+         universe = all_otus_enrichment,
+         TERM2GENE = term2genes_df)
+
+dim(day_cross_correlations_pathways[, c("ID", "pvalue", "p.adjust", "qvalue")])
+
+day_cross_correlations_pathways[, c("ID", "pvalue", "p.adjust", "qvalue")]
+
+```
