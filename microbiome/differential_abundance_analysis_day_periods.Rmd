@@ -11,16 +11,128 @@ Installing ANCOM-II:
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("ANCOMBC")
+```
 
+Getting the microbiome package (some of the test data is from there):
+
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("microbiome")
 ```
 
 
-
 ```{r}
+install.packages("tidyverse")
+library(tidyverse)
 library(ANCOMBC)
 ```
 
 
-```{r}
+Testing ancombc2 using example dataset from the Microbiome package (based on [this tutorial](https://www.bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html)):
 
+```{r}
+data(dietswap, package = "microbiome")
+abundance_data = microbiome::abundances(dietswap)
+aggregate_data = microbiome::abundances(microbiome::aggregate_taxa(dietswap, "Family"))
+head(abundance_data)
+dim(abundance_data)
+meta_data = microbiome::meta(dietswap)
+head(meta_data)
+dim(meta_data)
+set.seed(123)
+output = ancombc2(data = abundance_data, 
+                  meta_data = meta_data,
+                  fix_formula = "nationality + timepoint + group",
+                  rand_formula = "(timepoint | subject)",
+                  p_adj_method = "holm", pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "group", struc_zero = TRUE, neg_lb = TRUE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = TRUE, pairwise = TRUE, dunnet = TRUE, trend = TRUE,
+                  iter_control = list(tol = 1e-2, max_iter = 20, 
+                                      verbose = TRUE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = lme4::lmerControl(),
+                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100),
+                  trend_control = list(contrast = list(matrix(c(1, 0, -1, 1),
+                                                              nrow = 2, 
+                                                              byrow = TRUE)),
+                                       node = list(2),
+                                       solver = "ECOS",
+                                       B = 10))
 ```
+
+Importing data to run ancombc2 with our data:
+
+```{r}
+# Importing day and night count matrices (filtered by rel. abundance and coefficient of variation)
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
+colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^", "day_", colnames(day_otu_filtered_sparxcc_wallace2018))
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
+colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^", "night_", colnames(night_otu_filtered_sparxcc_wallace2018))
+head(day_otu_filtered_sparxcc_wallace2018)
+head(night_otu_filtered_sparxcc_wallace2018)
+
+# Merging counts matrices
+merged_otu_filtered_sparxcc_wallace2018 <- merge(day_otu_filtered_sparxcc_wallace2018, night_otu_filtered_sparxcc_wallace2018, by = "row.names", all = TRUE)
+rownames(merged_otu_filtered_sparxcc_wallace2018) <- merged_otu_filtered_sparxcc_wallace2018$Row.names
+merged_otu_filtered_sparxcc_wallace2018 <- merged_otu_filtered_sparxcc_wallace2018[ , -1]
+dim(merged_otu_filtered_sparxcc_wallace2018)
+head(merged_otu_filtered_sparxcc_wallace2018)
+
+# Generating the metadata dataframe
+metadata <- data.frame(
+    SampleID = colnames(merged_otu_filtered_sparxcc_wallace2018),
+    DayPeriod = sapply(strsplit(colnames(merged_otu_filtered_sparxcc_wallace2018), "_"), `[`, 1)
+)
+rownames(metadata) <- metadata$SampleID
+head(metadata)
+dim(metadata)
+
+set.seed(123)
+output = ancombc(data = merged_otu_filtered_sparxcc_wallace2018, 
+                  taxa_are_rows = TRUE,
+                  tax_level = NULL,
+                  meta_data = metadata,
+                  formula = "DayPeriod",
+                  p_adj_method = "holm",
+                  prv_cut = 0,
+                  lib_cut = 1000,
+                  group = "DayPeriod",
+                  struc_zero = TRUE,
+                  neg_lb = TRUE,
+                  alpha = 0.05,
+                  global = TRUE,
+                  verbose = TRUE)
+
+output = ancombc2(data = merged_otu_filtered_sparxcc_wallace2018, 
+                  meta_data = metadata,
+                  fix_formula = "nationality + timepoint + group",
+                  rand_formula = "(timepoint | subject)",
+                  p_adj_method = "holm", pseudo_sens = TRUE,
+                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
+                  group = "group", struc_zero = TRUE, neg_lb = TRUE,
+                  alpha = 0.05, n_cl = 2, verbose = TRUE,
+                  global = TRUE, pairwise = TRUE, dunnet = TRUE, trend = TRUE,
+                  iter_control = list(tol = 1e-2, max_iter = 20, 
+                                      verbose = TRUE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = lme4::lmerControl(),
+                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100),
+                  trend_control = list(contrast = list(matrix(c(1, 0, -1, 1),
+                                                              nrow = 2, 
+                                                              byrow = TRUE)),
+                                       node = list(2),
+                                       solver = "ECOS",
+                                       B = 10))
+```
+
+
+
+
+
+
+
