@@ -1,0 +1,26 @@
+---
+title: "Differential Abundance Analysis on the day periods"
+output: html_notebook
+---
+
+# Differential Abundance Analysis
+
+Installing ANCOM-II:
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("ANCOMBC")
+
+```
+
+
+
+```{r}
+library(ANCOMBC)
+```
+
+
+```{r}
+
+```
