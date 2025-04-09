@@ -24,10 +24,47 @@ BiocManager::install("microbiome")
 
 ```{r}
 install.packages("tidyverse")
+install.packages("DT")
+library(DT)
 library(tidyverse)
 library(ANCOMBC)
 ```
 
+Testing ancom using example dataset from the Microbiome package:
+
+```{r}
+data(atlas1006, package = "microbiome")
+pseq = phyloseq::subset_samples(atlas1006, time == 0)
+meta_data = microbiome::meta(pseq)
+meta_data$bmi = recode(meta_data$bmi_group,
+                       obese = "obese",
+                       severeobese = "obese",
+                       morbidobese = "obese")
+meta_data                       
+meta_data$bmi = factor(meta_data$bmi, levels = c("obese", "overweight", "lean"))
+meta_data$region = recode(as.character(meta_data$nationality),
+                          Scandinavia = "NE", UKIE = "NE", SouthEurope = "SE", 
+                          CentralEurope = "CE", EasternEurope = "EE",
+                          .missing = "unknown")
+
+phyloseq::sample_data(pseq) = meta_data
+
+# Subset to lean, overweight, and obese subjects
+pseq = phyloseq::subset_samples(pseq, bmi %in% c("lean", "overweight", "obese"))
+# Discard "EE" as it contains only 1 subject
+# Discard subjects with missing values of region
+pseq = phyloseq::subset_samples(pseq, ! region %in% c("EE", "unknown"))
+
+out = ancombc(data = pseq, tax_level = "Family", 
+              formula = "age + region + bmi", 
+              p_adj_method = "holm", prv_cut = 0.10, lib_cut = 1000, 
+              group = "bmi", struc_zero = TRUE, neg_lb = TRUE, tol = 1e-5, 
+              max_iter = 100, conserve = TRUE, alpha = 0.05, global = TRUE,
+              n_cl = 1, verbose = TRUE)
+
+res = out$res
+res_global = out$res_global
+```
 
 Testing ancombc2 using example dataset from the Microbiome package (based on [this tutorial](https://www.bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html)):
 
@@ -63,7 +100,7 @@ output = ancombc2(data = abundance_data,
                                        B = 10))
 ```
 
-Importing data to run ancombc2 with our data:
+Importing data and running ancombc with our data:
 
 ```{r}
 # Importing day and night count matrices (filtered by rel. abundance and coefficient of variation)
@@ -83,21 +120,18 @@ merged_otu_filtered_sparxcc_wallace2018 <- merged_otu_filtered_sparxcc_wallace20
 dim(merged_otu_filtered_sparxcc_wallace2018)
 head(merged_otu_filtered_sparxcc_wallace2018)
 
-# Generating the metadata dataframe
-metadata <- data.frame(
-    SampleID = colnames(merged_otu_filtered_sparxcc_wallace2018),
-    DayPeriod = sapply(strsplit(colnames(merged_otu_filtered_sparxcc_wallace2018), "_"), `[`, 1)
-)
-rownames(metadata) <- metadata$SampleID
-head(metadata)
+metadata <- read.csv('/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
 dim(metadata)
+head(metadata)
+# Removing substring from the beginning of row names
+rownames(metadata) <- sub("^exp_", "", rownames(metadata))
 
 set.seed(123)
 output = ancombc(data = merged_otu_filtered_sparxcc_wallace2018, 
                   taxa_are_rows = TRUE,
                   tax_level = NULL,
                   meta_data = metadata,
-                  formula = "DayPeriod",
+                  formula = "Subpopulation * DayPeriod",
                   p_adj_method = "holm",
                   prv_cut = 0,
                   lib_cut = 1000,
@@ -108,6 +142,32 @@ output = ancombc(data = merged_otu_filtered_sparxcc_wallace2018,
                   global = TRUE,
                   verbose = TRUE)
 
+res = output$res
+res_global = output$res_global
+
+tab_lfc = res$lfc
+head(tab_lfc)
+colnames(tab_lfc)
+col_name = c("Taxon", "Intercept", "Subpopulation Mixed", "Subpopulation Non-stiff stalk", "Subpopulation Popcorn", 
+             "Subpopulation Stiff stalk", "Subpopulation Sweet", "Subpopulation Tropical-subtropical", "Subpopulation unclassified",
+             "DayPeriod Night", "Subpopulationmixed:DayPeriodnight", "Subpopulationnon-stiff stalk:DayPeriodnight", "Subpopulationpopcorn:DayPeriodnight",
+             "Subpopulationstiff stalk:DayPeriodnight", "Subpopulationsweet:DayPeriodnight", "Subpopulationtropical-subtropical:DayPeriodnight",
+             "Subpopulationunclassified:DayPeriodnight")
+colnames(tab_lfc) = col_name
+tab_lfc %>% 
+  datatable(caption = "Log Fold Changes from the Primary Result") %>%
+  formatRound(col_name[-1], digits = 2)
+
+
+tab_diff = res$diff_abn
+colnames(tab_diff) = col_name
+tab_diff %>% 
+  datatable(caption = "Differentially Abundant Taxa from the Primary Result")
+
+```
+
+
+```{r}
 output = ancombc2(data = merged_otu_filtered_sparxcc_wallace2018, 
                   meta_data = metadata,
                   fix_formula = "nationality + timepoint + group",
