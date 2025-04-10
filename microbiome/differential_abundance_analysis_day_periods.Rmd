@@ -3,31 +3,33 @@ title: "Differential Abundance Analysis on the day periods"
 output: html_notebook
 ---
 
-# Differential Abundance Analysis
+# Differential Abundance Analysis (DAA)
 
-Installing ANCOM-II:
+Installing ANCOM and other required packages:
 
 ```{r}
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("ANCOMBC")
-```
 
-Getting the microbiome package (some of the test data is from there):
-
-```{r}
+# Getting the microbiome package (some of the test data is from there):
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("microbiome")
-```
 
-
-```{r}
+install.packages("BiocManager")
+BiocManager::install("phyloseq")
 install.packages("tidyverse")
 install.packages("DT")
+```
+
+Importing required libraries:
+
+```{r}
 library(DT)
 library(tidyverse)
 library(ANCOMBC)
+library(phyloseq)
 ```
 
 Testing ancom using example dataset from the Microbiome package:
@@ -66,48 +68,15 @@ res = out$res
 res_global = out$res_global
 ```
 
-Testing ancombc2 using example dataset from the Microbiome package (based on [this tutorial](https://www.bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html)):
-
-```{r}
-data(dietswap, package = "microbiome")
-abundance_data = microbiome::abundances(dietswap)
-aggregate_data = microbiome::abundances(microbiome::aggregate_taxa(dietswap, "Family"))
-head(abundance_data)
-dim(abundance_data)
-meta_data = microbiome::meta(dietswap)
-head(meta_data)
-dim(meta_data)
-set.seed(123)
-output = ancombc2(data = abundance_data, 
-                  meta_data = meta_data,
-                  fix_formula = "nationality + timepoint + group",
-                  rand_formula = "(timepoint | subject)",
-                  p_adj_method = "holm", pseudo_sens = TRUE,
-                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
-                  group = "group", struc_zero = TRUE, neg_lb = TRUE,
-                  alpha = 0.05, n_cl = 2, verbose = TRUE,
-                  global = TRUE, pairwise = TRUE, dunnet = TRUE, trend = TRUE,
-                  iter_control = list(tol = 1e-2, max_iter = 20, 
-                                      verbose = TRUE),
-                  em_control = list(tol = 1e-5, max_iter = 100),
-                  lme_control = lme4::lmerControl(),
-                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100),
-                  trend_control = list(contrast = list(matrix(c(1, 0, -1, 1),
-                                                              nrow = 2, 
-                                                              byrow = TRUE)),
-                                       node = list(2),
-                                       solver = "ECOS",
-                                       B = 10))
-```
 
 Importing data and running ancombc with our data:
 
 ```{r}
 # Importing day and night count matrices (filtered by rel. abundance and coefficient of variation)
-day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^", "day_", colnames(day_otu_filtered_sparxcc_wallace2018))
-night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^", "night_", colnames(night_otu_filtered_sparxcc_wallace2018))
 head(day_otu_filtered_sparxcc_wallace2018)
@@ -120,18 +89,23 @@ merged_otu_filtered_sparxcc_wallace2018 <- merged_otu_filtered_sparxcc_wallace20
 dim(merged_otu_filtered_sparxcc_wallace2018)
 head(merged_otu_filtered_sparxcc_wallace2018)
 
-metadata <- read.csv('/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
+metadata <- read.csv('/home/renato/repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
 dim(metadata)
 head(metadata)
 # Removing substring from the beginning of row names
 rownames(metadata) <- sub("^exp_", "", rownames(metadata))
 
+phseq <- phyloseq(merged_otu_filtered_sparxcc_wallace2018, metadata)
+
+# Creating a phyloseq object without a tax table
+otu_table_obj <- otu_table(as.matrix(merged_otu_filtered_sparxcc_wallace2018), taxa_are_rows = TRUE)
+sample_data_obj <- sample_data(metadata)
+phseq <- phyloseq(otu_table_obj, sample_data_obj)
+
 set.seed(123)
-output = ancombc(data = merged_otu_filtered_sparxcc_wallace2018, 
-                  taxa_are_rows = TRUE,
+output = ancombc(data = phseq,
                   tax_level = NULL,
-                  meta_data = metadata,
-                  formula = "Subpopulation * DayPeriod",
+                  formula = "Subpopulation + DayPeriod",
                   p_adj_method = "holm",
                   prv_cut = 0,
                   lib_cut = 1000,
@@ -145,49 +119,48 @@ output = ancombc(data = merged_otu_filtered_sparxcc_wallace2018,
 res = output$res
 res_global = output$res_global
 
+# Checking if rows in output$feature_table are exactly equal to otu_table_obj
+all.equal(as.data.frame(output$feature_table), as.data.frame(merged_otu_filtered_sparxcc_wallace2018))
+
 tab_lfc = res$lfc
 head(tab_lfc)
 colnames(tab_lfc)
 col_name = c("Taxon", "Intercept", "Subpopulation Mixed", "Subpopulation Non-stiff stalk", "Subpopulation Popcorn", 
              "Subpopulation Stiff stalk", "Subpopulation Sweet", "Subpopulation Tropical-subtropical", "Subpopulation unclassified",
-             "DayPeriod Night", "Subpopulationmixed:DayPeriodnight", "Subpopulationnon-stiff stalk:DayPeriodnight", "Subpopulationpopcorn:DayPeriodnight",
-             "Subpopulationstiff stalk:DayPeriodnight", "Subpopulationsweet:DayPeriodnight", "Subpopulationtropical-subtropical:DayPeriodnight",
-             "Subpopulationunclassified:DayPeriodnight")
+             "DayPeriod Night")
+             # Additional columns for results if we consider the interaction (subpopulation and day period)
+             #, "Subpopulationmixed:DayPeriodnight", "Subpopulationnon-stiff stalk:DayPeriodnight", "Subpopulationpopcorn:DayPeriodnight",
+             #"Subpopulationstiff stalk:DayPeriodnight", "Subpopulationsweet:DayPeriodnight", "Subpopulationtropical-subtropical:DayPeriodnight",
+             #"Subpopulationunclassified:DayPeriodnight")
 colnames(tab_lfc) = col_name
 tab_lfc %>% 
   datatable(caption = "Log Fold Changes from the Primary Result") %>%
   formatRound(col_name[-1], digits = 2)
-
 
 tab_diff = res$diff_abn
 colnames(tab_diff) = col_name
 tab_diff %>% 
   datatable(caption = "Differentially Abundant Taxa from the Primary Result")
 
-```
+as.data.frame(output$feature_table)[, ]
+filtered_feature_table <- output$feature_table[res$q_val < 0.05 & res$diff_abn == TRUE, ]
+head(filtered_feature_table)
+
+# Select only the taxa considered differentially abundant comparing two Day Periods
+output$feature_table[(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')], ]
 
 
-```{r}
-output = ancombc2(data = merged_otu_filtered_sparxcc_wallace2018, 
-                  meta_data = metadata,
-                  fix_formula = "nationality + timepoint + group",
-                  rand_formula = "(timepoint | subject)",
-                  p_adj_method = "holm", pseudo_sens = TRUE,
-                  prv_cut = 0.10, lib_cut = 1000, s0_perc = 0.05,
-                  group = "group", struc_zero = TRUE, neg_lb = TRUE,
-                  alpha = 0.05, n_cl = 2, verbose = TRUE,
-                  global = TRUE, pairwise = TRUE, dunnet = TRUE, trend = TRUE,
-                  iter_control = list(tol = 1e-2, max_iter = 20, 
-                                      verbose = TRUE),
-                  em_control = list(tol = 1e-5, max_iter = 100),
-                  lme_control = lme4::lmerControl(),
-                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100),
-                  trend_control = list(contrast = list(matrix(c(1, 0, -1, 1),
-                                                              nrow = 2, 
-                                                              byrow = TRUE)),
-                                       node = list(2),
-                                       solver = "ECOS",
-                                       B = 10))
+# Creating a new dataframe with specific columns from filtered ancombc results
+filtered_results <- data.frame(
+  Taxon = rownames(output$feature_table[(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')],]),
+  LogFoldChange = res$lfc[(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')], c("DayPeriodnight")],
+  PValue = res$p_val[(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')], c("DayPeriodnight")],
+  AdjustedPValue = res$q_val[(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')], c("DayPeriodnight")],
+  DifferentialAbundance = res$diff_abn[(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')], c("DayPeriodnight")]
+)
+
+head(filtered_results)
+tail(filtered_results)
 ```
 
 
