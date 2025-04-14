@@ -212,24 +212,28 @@ pheatmap(sorted_otu,
       scale = "row",  # z-score normalization across each OTU
       show_rownames = TRUE,
       show_colnames = FALSE,
-      fontsize_row = 8,
+      fontsize_row = 2,
       color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
       main = "Heatmap of Differentially Abundant OTUs (log2 CPM)")
 dev.off()
 
-png("heatmap_differentially_abundant_otus.png", width = 1200, height = 1000, res = 300)
+png("heatmap_differentially_abundant_otus_adjusted.png", width = 1200, height = 1000, res = 300)
 pheatmap(sorted_otu,
-      annotation_col = annotation_col[rownames(sorted_samples), , drop = FALSE],
-      cluster_cols = FALSE,  # Disable clustering for columns to preserve group order
-      cluster_rows = TRUE,
-      scale = "row",  # z-score normalization across each OTU
-      show_rownames = TRUE,
-      show_colnames = FALSE,
-      fontsize_row = 8,
-      color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
-      main = "Heatmap of Differentially Abundant OTUs (log2 CPM)")
+  annotation_col = annotation_col[rownames(sorted_samples), , drop = FALSE],
+  cluster_cols = FALSE,  # Disable clustering for columns to preserve group order
+  cluster_rows = TRUE,
+  scale = "row",  # z-score normalization across each OTU
+  show_rownames = TRUE,
+  show_colnames = FALSE,
+  fontsize = 2,
+  fontsize_row = 1,
+  fontsize_col = 6,  # Decrease font size for column annotations
+  legend = TRUE,
+  annotation_names_col = TRUE,
+  annotation_names_row = FALSE,
+  color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
+  main = "Heatmap of Differentially Abundant OTUs (log2 CPM)")
 dev.off()
-
 ```
 
 
