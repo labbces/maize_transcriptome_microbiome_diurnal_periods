@@ -21,6 +21,11 @@ install.packages("BiocManager")
 BiocManager::install("phyloseq")
 install.packages("tidyverse")
 install.packages("DT")
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("edgeR")
 ```
 
 Importing required libraries:
@@ -30,6 +35,7 @@ library(DT)
 library(tidyverse)
 library(ANCOMBC)
 library(phyloseq)
+library(edgeR)
 ```
 
 Testing ancom using example dataset from the Microbiome package:
@@ -73,10 +79,12 @@ Importing data and running ancombc with our data:
 
 ```{r}
 # Importing day and night count matrices (filtered by rel. abundance and coefficient of variation)
-day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+#day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^", "day_", colnames(day_otu_filtered_sparxcc_wallace2018))
-night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+#night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^", "night_", colnames(night_otu_filtered_sparxcc_wallace2018))
 head(day_otu_filtered_sparxcc_wallace2018)
@@ -89,13 +97,12 @@ merged_otu_filtered_sparxcc_wallace2018 <- merged_otu_filtered_sparxcc_wallace20
 dim(merged_otu_filtered_sparxcc_wallace2018)
 head(merged_otu_filtered_sparxcc_wallace2018)
 
-metadata <- read.csv('/home/renato/repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
+metadata <- read.csv('/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
+#metadata <- read.csv('/home/renato/repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
 dim(metadata)
 head(metadata)
 # Removing substring from the beginning of row names
 rownames(metadata) <- sub("^exp_", "", rownames(metadata))
-
-phseq <- phyloseq(merged_otu_filtered_sparxcc_wallace2018, metadata)
 
 # Creating a phyloseq object without a tax table
 otu_table_obj <- otu_table(as.matrix(merged_otu_filtered_sparxcc_wallace2018), taxa_are_rows = TRUE)
@@ -110,7 +117,7 @@ output = ancombc(data = phseq,
                   prv_cut = 0,
                   lib_cut = 1000,
                   group = "DayPeriod",
-                  struc_zero = TRUE,
+                  struc_zero = FALSE,
                   neg_lb = TRUE,
                   alpha = 0.05,
                   global = TRUE,
@@ -142,13 +149,10 @@ colnames(tab_diff) = col_name
 tab_diff %>% 
   datatable(caption = "Differentially Abundant Taxa from the Primary Result")
 
-as.data.frame(output$feature_table)[, ]
-filtered_feature_table <- output$feature_table[res$q_val < 0.05 & res$diff_abn == TRUE, ]
-head(filtered_feature_table)
+(res$q_val < 0.05 & res$diff_abn == TRUE)
 
 # Select only the taxa considered differentially abundant comparing two Day Periods
-output$feature_table[(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')], ]
-
+(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')]
 
 # Creating a new dataframe with specific columns from filtered ancombc results
 filtered_results <- data.frame(
@@ -159,8 +163,73 @@ filtered_results <- data.frame(
   DifferentialAbundance = res$diff_abn[(res$q_val < 0.05 & res$diff_abn == TRUE)[, c('DayPeriodnight')], c("DayPeriodnight")]
 )
 
+dim(filtered_results)
 head(filtered_results)
 tail(filtered_results)
+
+filtered_results_sorted_lfc <- filtered_results[order(filtered_results$LogFoldChange, decreasing = TRUE), ]
+head(filtered_results_sorted_lfc)
+tail(filtered_results_sorted_lfc)
+
+# Computing CPM for OTU counts
+otu <- as(otu_table(phseq), "matrix")
+otu_cpm <- cpm(otu, log = FALSE)
+
+# Creating a new phyloseq object with the CPM values
+otu_table(phseq) <- otu_table(otu_cpm, taxa_are_rows = TRUE)
+phsig <- prune_taxa(filtered_results$Taxon, phseq)
+
+library(ggplot2)
+
+df_plot <- psmelt(phsig)
+head(df_plot)
+
+# Boxplot or violin plot
+ggplot(df_plot, aes(x = DayPeriod, y = Abundance, fill = DayPeriod)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  geom_jitter(width = 0.2, size = 0.8, alpha = 0.4) +
+  facet_wrap(~ OTU, scales = "free_y") +
+  labs(title = "Differentially Abundant OTUs between Day and Night",
+       y = "Abundance (CPM)", x = "") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1))
+
+sample_info <- data.frame(sample_data(phseq))
+annotation_col <- data.frame(DayPeriod = sample_info$DayPeriod)
+rownames(annotation_col) <- rownames(sample_info)
+
+library(pheatmap)
+
+# Sorting samples by group (DayPeriod) before generating the heatmap
+sorted_samples <- sample_info[order(sample_info$DayPeriod), ]
+sorted_otu <- otu_table(phseq)[, rownames(sorted_samples)]
+
+pdf("heatmap_differentially_abundant_otus.pdf", width = 10, height = 8)
+pheatmap(sorted_otu,
+      annotation_col = annotation_col[rownames(sorted_samples), , drop = FALSE],
+      cluster_cols = FALSE,  # Disable clustering for columns to preserve group order
+      cluster_rows = TRUE,
+      scale = "row",  # z-score normalization across each OTU
+      show_rownames = TRUE,
+      show_colnames = FALSE,
+      fontsize_row = 8,
+      color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
+      main = "Heatmap of Differentially Abundant OTUs (log2 CPM)")
+dev.off()
+
+png("heatmap_differentially_abundant_otus.png", width = 1200, height = 1000, res = 300)
+pheatmap(sorted_otu,
+      annotation_col = annotation_col[rownames(sorted_samples), , drop = FALSE],
+      cluster_cols = FALSE,  # Disable clustering for columns to preserve group order
+      cluster_rows = TRUE,
+      scale = "row",  # z-score normalization across each OTU
+      show_rownames = TRUE,
+      show_colnames = FALSE,
+      fontsize_row = 8,
+      color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
+      main = "Heatmap of Differentially Abundant OTUs (log2 CPM)")
+dev.off()
+
 ```
 
 
