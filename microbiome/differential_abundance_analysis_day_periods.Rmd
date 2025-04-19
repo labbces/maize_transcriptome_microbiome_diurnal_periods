@@ -167,9 +167,47 @@ dim(filtered_results)
 head(filtered_results)
 tail(filtered_results)
 
+sum(filtered_results$LogFoldChange > 0, na.rm = TRUE)
+sum(filtered_results$LogFoldChange < 0, na.rm = TRUE)
+
 filtered_results_sorted_lfc <- filtered_results[order(filtered_results$LogFoldChange, decreasing = TRUE), ]
-head(filtered_results_sorted_lfc)
-tail(filtered_results_sorted_lfc)
+head(filtered_results_sorted_lfc, n = 10)
+tail(filtered_results_sorted_lfc, n = 10)
+
+# Import the GTDB taxonomy table
+gtdb_taxonomy <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/otu_taxonomy/gtdb_taxonomy.tsv", sep='\t', header=TRUE)
+gtdb_taxonomy <- gtdb_taxonomy[, -3]
+rownames(gtdb_taxonomy) <- gtdb_taxonomy$Feature.ID
+head(gtdb_taxonomy)
+
+# Selecting OTUs with positive fold changes
+positive_fold_change_otus <- filtered_results %>%
+  filter(LogFoldChange > 0) %>%
+  select(Taxon, LogFoldChange, AdjustedPValue)
+
+head(positive_fold_change_otus)
+
+# Selecting OTUs with negative fold changes
+negative_fold_change_otus <- filtered_results %>%
+  filter(LogFoldChange < 0) %>%
+  select(Taxon, LogFoldChange, AdjustedPValue)
+
+head(negative_fold_change_otus)
+
+# Merging positive_fold_change_otus with gtdb_taxonomy to get taxonomy information
+positive_fold_change_otus_with_taxonomy <- positive_fold_change_otus %>%
+  left_join(gtdb_taxonomy, by = c("Taxon" = "Feature.ID"))
+
+head(positive_fold_change_otus_with_taxonomy)
+dim(positive_fold_change_otus_with_taxonomy)
+positive_fold_change_otus_with_taxonomy[order(positive_fold_change_otus_with_taxonomy$LogFoldChange, decreasing = TRUE), ]
+
+# Merging negative_fold_change_otus with gtdb_taxonomy to get taxonomy information
+negative_fold_change_otus_with_taxonomy <- negative_fold_change_otus %>%
+  left_join(gtdb_taxonomy, by = c("Taxon" = "Feature.ID"))
+head(negative_fold_change_otus_with_taxonomy)
+dim(negative_fold_change_otus_with_taxonomy)
+negative_fold_change_otus_with_taxonomy[order(negative_fold_change_otus_with_taxonomy$LogFoldChange, decreasing = FALSE), ]
 
 # Computing CPM for OTU counts
 otu <- as(otu_table(phseq), "matrix")
@@ -183,6 +221,23 @@ library(ggplot2)
 
 df_plot <- psmelt(phsig)
 head(df_plot)
+
+# Computing average OTU abundance for each group in DayPeriod
+average_otu <- df_plot %>%
+  group_by(DayPeriod, OTU) %>%
+  summarise(AverageAbundance = mean(Abundance, na.rm = TRUE)) %>%
+  ungroup()
+
+head(average_otu)
+
+# Compute fold change of a particular OTU between two groups in DayPeriod
+otu_of_interest <- "305420"  # Replace with the OTU of interest
+fold_change <- average_otu %>%
+  filter(OTU == otu_of_interest) %>%
+  spread(key = DayPeriod, value = AverageAbundance) %>%
+  mutate(FoldChange = night / day)  # Assuming "Day" and "Night" are the group names
+
+fold_change
 
 # Boxplot or violin plot
 ggplot(df_plot, aes(x = DayPeriod, y = Abundance, fill = DayPeriod)) +
