@@ -1,0 +1,29 @@
+---
+title: "Data exploratory analysis of co-expression clusters with enrichment analysis"
+output: html_notebook
+---
+
+```{r}
+Exp_table_long_z <- read.table("/home/santosrac/Projects/UGA_RACS/Transcriptome/paper2025/paper2025/Exp_table_long_z.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+head(Exp_table_long_z)
+
+library(ggplot2)
+
+# Filter data for module 1
+module1_data <- subset(Exp_table_long_z, module == 1)
+module5_data <- subset(Exp_table_long_z, module == 5)
+module9_data <- subset(Exp_table_long_z, module == 9)
+
+# Center the title of the plot
+ggplot(module9_data, aes(x = DayPeriod, y = logTPM, fill = DayPeriod)) +
+    geom_violin(trim = FALSE) +
+    labs(title = "Module 9",
+            x = "Circadian Period",
+            y = "logTPM") +
+    theme_minimal() +
+    theme(legend.position = "none",
+            plot.title = element_text(size = 36, hjust = 0.5),
+            axis.title.x = element_text(size = 26),
+            axis.title.y = element_text(size = 26),
+            axis.text = element_text(size = 24))
+```
