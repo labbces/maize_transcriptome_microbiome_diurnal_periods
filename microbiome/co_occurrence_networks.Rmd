@@ -80,8 +80,45 @@ E(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight <- night_
 ## Computing network metrics:
 
 ```{r}
-se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net
-se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net
+# Extracting the number of edges from the networks
+num_edges_day <- gsize(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
+num_edges_night <- gsize(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)
+
+# Printing the number of edges
+cat("Number of edges in the day network:", num_edges_day, "\n")
+cat("Number of edges in the night network:", num_edges_night, "\n")
+
+# Computing the average degree for the day and night networks
+avg_degree_day <- mean(degree(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net))
+avg_degree_night <- mean(degree(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net))
+
+# Printing the average degree
+cat("Average degree in the day network:", avg_degree_day, "\n")
+cat("Average degree in the night network:", avg_degree_night, "\n")
+
+# Computing the clustering coefficient for the day and night networks
+clustering_coeff_day <- transitivity(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net, type = "average")
+clustering_coeff_night <- transitivity(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, type = "average")
+
+# Printing the clustering coefficients
+cat("Clustering coefficient in the day network:", clustering_coeff_day, "\n")
+cat("Clustering coefficient in the night network:", clustering_coeff_night, "\n")
+
+# Computing centralization closeness for the day and night networks
+centralization_closeness_day <- centralization.closeness(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$centralization
+centralization_closeness_night <- centralization.closeness(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$centralization
+
+# Printing the centralization closeness
+cat("Centralization closeness in the day network:", centralization_closeness_day, "\n")
+cat("Centralization closeness in the night network:", centralization_closeness_night, "\n")
+
+# Computing centralization betweenness for the day and night networks
+centralization_betweenness_day <- centralization.betweenness(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$centralization
+centralization_betweenness_night <- centralization.betweenness(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$centralization
+
+# Printing the centralization betweenness
+cat("Centralization betweenness in the day network:", centralization_betweenness_day, "\n")
+cat("Centralization betweenness in the night network:", centralization_betweenness_night, "\n")
 ```
 
 ## Clustering the network (Louvain):
