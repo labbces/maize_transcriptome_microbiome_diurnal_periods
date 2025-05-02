@@ -144,8 +144,10 @@ write.table(SparXCC_output_common_plots_night, file = "SparXCC_output_night_comm
 Importing the edge list files for the day and night samples using the same/common plots (n = 174):
 
 ```{r}
-sparxcc_day_common_samples <- read.csv("/home/renato/projects/fapesp_bepe_pd/integration_transcriptome_microbiome/SparXCC_output_day_common_samples_edgelist.tsv", sep="\t", header=TRUE)
-sparxcc_night_common_samples <- read.csv("/home/renato/projects/fapesp_bepe_pd/integration_transcriptome_microbiome/SparXCC_output_night_common_samples_edgelist.tsv", sep="\t", header=TRUE)
+sparxcc_day_common_samples <- read.csv("/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/SparXCC_output_day_common_samples_edgelist.tsv", sep="\t", header=TRUE)
+#sparxcc_day_common_samples <- read.csv("/home/renato/projects/fapesp_bepe_pd/integration_transcriptome_microbiome/SparXCC_output_day_common_samples_edgelist.tsv", sep="\t", header=TRUE)
+sparxcc_night_common_samples <- read.csv("/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/SparXCC_output_night_common_samples_edgelist.tsv", sep="\t", header=TRUE)
+#sparxcc_night_common_samples <- read.csv("/home/renato/projects/fapesp_bepe_pd/integration_transcriptome_microbiome/SparXCC_output_night_common_samples_edgelist.tsv", sep="\t", header=TRUE)
 ```
 
 Distribution of correlations from the edge list:
@@ -157,27 +159,33 @@ library(ggplot2)
 sparxcc_day_common_samples$correlation_type <- ifelse(sparxcc_day_common_samples$CorrelationCoefficient > 0, "Positive", "Negative")
 sparxcc_night_common_samples$correlation_type <- ifelse(sparxcc_night_common_samples$CorrelationCoefficient > 0, "Positive", "Negative")
 
+# Increase font size for axis labels, names, and title
+theme_update(
+  axis.title = element_text(size = 16),
+  axis.text = element_text(size = 14),
+  plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+)
+
+
 # Plot histogram
 png(filename = "day_sparxcc_dist.png")
 ggplot(sparxcc_day_common_samples, aes(x = CorrelationCoefficient, fill = correlation_type)) +
     geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) +
     scale_fill_manual(values = c("Positive" = "blue", "Negative" = "red")) +
-    labs(title = "Distribution of SparXCC Correlations (Day)",
-             x = "Correlation",
+    labs(title = "Day",
+             x = "Correlation (SparXCC)",
              y = "Frequency",
-             fill = "Correlation Type") +
-    theme_minimal()
+             fill = "Correlation Sign")
 dev.off()
 
 png(filename = "night_sparxcc_dist.png")
 ggplot(sparxcc_night_common_samples, aes(x = CorrelationCoefficient, fill = correlation_type)) +
     geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) +
     scale_fill_manual(values = c("Positive" = "blue", "Negative" = "red")) +
-    labs(title = "Distribution of SparXCC Correlations (Night)",
-             x = "Correlation",
+    labs(title = "Night",
+             x = "Correlation (SparXCC)",
              y = "Frequency",
-             fill = "Correlation Type") +
-    theme_minimal()
+             fill = "Correlation Sign")
 dev.off()
 ```
 
