@@ -145,6 +145,24 @@ V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
 V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain <- night_sparxcc_temp$louvain
 V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)
 
+# Plotting the day network with nodes colored by Louvain cluster
+png(filename = "day_network_louvain_colored.1.png", width = 800, height = 800)
+plot(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net, 
+    vertex.color = V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain, 
+    vertex.size = 5, 
+    vertex.label = NA, 
+    main = "Day Network: Louvain Clusters")
+dev.off()
+
+# Plotting the night network with nodes colored by Louvain cluster
+png(filename = "night_network_louvain_colored.1.png", width = 800, height = 800)
+plot(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, 
+    vertex.color = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain, 
+    vertex.size = 5, 
+    vertex.label = NA, 
+    main = "Night Network: Louvain Clusters")
+dev.off()
+
 # Just checking vertex attributes in the graph
 vertex_attr(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
 vertex_attr(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)
