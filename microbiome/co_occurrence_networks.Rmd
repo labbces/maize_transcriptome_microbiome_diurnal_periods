@@ -13,13 +13,16 @@ The OTU counts are used in the construction of the networks.
 #library(devtools)
 #install_github("zdk123/SpiecEasi")
 library(SpiecEasi)
+library(igraph)
 ```
 
 ```{r}
 #Importing day and night tables
-day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+#day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
-night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+#night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
 
 head(day_otu_filtered_sparxcc_wallace2018)
@@ -30,7 +33,11 @@ day_otu_filtered_sparxcc_wallace2018_transposed <- t(day_otu_filtered_sparxcc_wa
 night_otu_filtered_sparxcc_wallace2018_transposed <- t(night_otu_filtered_sparxcc_wallace2018)
 
 #Running spiec-easi with Meinshausen-Bühlman (MB)
+RNGkind("L'Ecuyer-CMRG")
+set.seed(1234)
 se.mb.day_otu_filtered_sparxcc_wallace2018 <- spiec.easi(day_otu_filtered_sparxcc_wallace2018_transposed, method='mb', lambda.min.ratio=1e-2, nlambda=20, pulsar.params=list(rep.num=50, ncores=8))
+RNGkind("L'Ecuyer-CMRG")
+set.seed(1234)
 se.mb.night_otu_filtered_sparxcc_wallace2018 <- spiec.easi(night_otu_filtered_sparxcc_wallace2018_transposed, method='mb', lambda.min.ratio=1e-2, nlambda=20, pulsar.params=list(rep.num=50, ncores=8))
 
 #Adding OTU names to adjacency matrices
@@ -70,18 +77,31 @@ E(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight <- day_spar
 E(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight <- night_sparxcc.weights.dist
 ```
 
+## Computing network metrics:
+
+```{r}
+se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net
+se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net
+```
+
 ## Clustering the network (Louvain):
 
 ```{r}
+RNGkind("L'Ecuyer-CMRG")
+set.seed(1234)
 day_sparxcc_wt <- cluster_louvain(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net, weights = E(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight)
 day_sparxcc_temp <- V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$name
 day_sparxcc_temp <- as.data.frame(day_sparxcc_temp)
 day_sparxcc_temp$louvain <- membership(day_sparxcc_wt)
+day_sparxcc_wt
 
+RNGkind("L'Ecuyer-CMRG")
+set.seed(1234)
 night_sparxcc_wt <- cluster_louvain(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, weights = E(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight)
 night_sparxcc_temp <- V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$name
 night_sparxcc_temp <- as.data.frame(night_sparxcc_temp)
 night_sparxcc_temp$louvain <- membership(night_sparxcc_wt)
+night_sparxcc_wt
 
 V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain <- day_sparxcc_temp$louvain
 V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
@@ -128,19 +148,19 @@ se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df <- data.frame(Node = 
            Pi = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$Pi)
 
 # Write dataframes to tabular files
-write.table(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "day_network_zi_pi_metrics.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
-write.table(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "night_network_zi_pi_metrics.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "day_network_zi_pi_metrics.1.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "night_network_zi_pi_metrics.1.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
 
-# Scatter plot with Pi and Zi
-png(filename = "day_Pi_Zi_plot.png")
-plot(Pi_day, Zi_day, xlab = "Among-module connectivity (Pi)", ylab = "Within-module degree z-score (Zi)")
+# Adding titles to the plots
+png(filename = "day_Pi_Zi_plot_with_title.1.png")
+plot(Pi_day, Zi_day, xlab = "Among-module connectivity (Pi)", ylab = "Within-module degree z-score (Zi)", main = "Day Network: Pi vs Zi")
 # Add threshold lines
 abline(v = 0.62, col = "red", lty = 2, lwd = 2)  # Horizontal line at Pi = 0.62
 abline(h = 2.5, col = "green", lty = 2, lwd = 2)  # Vertical line at Zi = 2.5
 dev.off()
 
-png(filename = "night_Pi_Zi_plot.png")
-plot(Pi_night, Zi_night, xlab = "Among-module connectivity (Pi)", ylab = "Within-module degree z-score (Zi)")
+png(filename = "night_Pi_Zi_plot_with_title.1.png")
+plot(Pi_night, Zi_night, xlab = "Among-module connectivity (Pi)", ylab = "Within-module degree z-score (Zi)", main = "Night Network: Pi vs Zi")
 # Add threshold lines
 abline(v = 0.62, col = "red", lty = 2, lwd = 2)  # Horizontal line at Pi = 0.62
 abline(h = 2.5, col = "green", lty = 2, lwd = 2)  # Vertical line at Zi = 2.5
