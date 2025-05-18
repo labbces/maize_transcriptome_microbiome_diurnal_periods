@@ -1,0 +1,81 @@
+---
+title: "CLAM Analysis on the circadian periods"
+output: html_notebook
+---
+
+# CLAM Analysis
+
+Importing data and merging day and night count matrices:
+
+```{r}
+# Importing day and night count matrices (filtered by rel. abundance and coefficient of variation)
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+#day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
+colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^", "day_", colnames(day_otu_filtered_sparxcc_wallace2018))
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+#night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
+colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^", "night_", colnames(night_otu_filtered_sparxcc_wallace2018))
+head(day_otu_filtered_sparxcc_wallace2018)
+head(night_otu_filtered_sparxcc_wallace2018)
+
+# Merging counts matrices
+merged_otu_filtered_sparxcc_wallace2018 <- merge(day_otu_filtered_sparxcc_wallace2018, night_otu_filtered_sparxcc_wallace2018, by = "row.names", all = TRUE)
+rownames(merged_otu_filtered_sparxcc_wallace2018) <- merged_otu_filtered_sparxcc_wallace2018$Row.names
+merged_otu_filtered_sparxcc_wallace2018 <- merged_otu_filtered_sparxcc_wallace2018[ , -1]
+dim(merged_otu_filtered_sparxcc_wallace2018)
+head(merged_otu_filtered_sparxcc_wallace2018)
+
+metadata <- read.csv('/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
+#metadata <- read.csv('/home/renato/repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
+dim(metadata)
+head(metadata)
+# Removing substring from the beginning of row names
+rownames(metadata) <- sub("^exp_", "", rownames(metadata))
+```
+
+
+Exploring the example data from [vegan package](https://rdrr.io/cran/vegan/man/clamtest.html):
+
+```{r}
+library(vegan)
+
+data(mite)
+data(mite.env)
+
+head(mite)
+head(mite.env)
+
+dim(mite)
+dim(mite.env)
+
+sol <- with(mite.env, clamtest(mite, Shrub=="None", alpha=0.005))
+
+summary(sol)
+head(sol)
+plot(sol)
+```
+
+Running with the data from the paper:
+
+```{r}
+?clamtest
+
+merged_otu_filtered_sparxcc_wallace2018_transposed <- t(merged_otu_filtered_sparxcc_wallace2018)
+head(merged_otu_filtered_sparxcc_wallace2018_transposed)
+dim(merged_otu_filtered_sparxcc_wallace2018_transposed)
+
+# Reorder metadata rows to match the order of merged_otu_filtered_sparxcc_wallace2018_transposed
+metadata_ordered <- metadata[rownames(merged_otu_filtered_sparxcc_wallace2018_transposed), ]
+dim(metadata_ordered)
+
+# Check if rownames of metadata_ordered match rownames of merged_otu_filtered_sparxcc_wallace2018_transposed
+identical(rownames(metadata_ordered), rownames(merged_otu_filtered_sparxcc_wallace2018_transposed))
+metadata_ordered_groups <- as.vector(metadata_ordered$DayPeriod)
+
+clam_res <- clamtest(merged_otu_filtered_sparxcc_wallace2018_transposed, metadata_ordered_groups, alpha=0.005)
+summary(clam_res)
+head(clam_res)
+plot(clam_res)
+```
