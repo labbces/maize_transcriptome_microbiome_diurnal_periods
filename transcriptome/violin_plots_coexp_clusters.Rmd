@@ -9,7 +9,9 @@ library(ggplot2)
 library(dplyr)
 
 # Import the table
-Exp_table_long_z <- read.csv("/home/renato/projects/fapesp_bepe_pd/transcriptome/Exp_table_long_z.txt",
+
+#Exp_table_long_z <- read.csv("/home/renato/projects/fapesp_bepe_pd/transcriptome/Exp_table_long_z.txt",
+Exp_table_long_z <- read.csv("/home/santosrac/Projects/UGA_RACS/Transcriptome/paper2025/paper2025/Exp_table_long_z.txt",
                  sep = "\t",
                  header = TRUE)
 
