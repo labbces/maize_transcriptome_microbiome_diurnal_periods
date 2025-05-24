@@ -5,29 +5,6 @@ output: html_notebook
 
 # Differential Abundance Analysis (DAA)
 
-Installing ANCOM and other required packages:
-
-```{r}
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install("ANCOMBC")
-
-# Getting the microbiome package (some of the test data is from there):
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install("microbiome")
-
-install.packages("BiocManager")
-BiocManager::install("phyloseq")
-install.packages("tidyverse")
-install.packages("DT")
-
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install("edgeR")
-```
-
 Importing required libraries:
 
 ```{r}
@@ -37,43 +14,6 @@ library(ANCOMBC)
 library(phyloseq)
 library(edgeR)
 ```
-
-Testing ancom using example dataset from the Microbiome package:
-
-```{r}
-data(atlas1006, package = "microbiome")
-pseq = phyloseq::subset_samples(atlas1006, time == 0)
-meta_data = microbiome::meta(pseq)
-meta_data$bmi = recode(meta_data$bmi_group,
-                       obese = "obese",
-                       severeobese = "obese",
-                       morbidobese = "obese")
-meta_data                       
-meta_data$bmi = factor(meta_data$bmi, levels = c("obese", "overweight", "lean"))
-meta_data$region = recode(as.character(meta_data$nationality),
-                          Scandinavia = "NE", UKIE = "NE", SouthEurope = "SE", 
-                          CentralEurope = "CE", EasternEurope = "EE",
-                          .missing = "unknown")
-
-phyloseq::sample_data(pseq) = meta_data
-
-# Subset to lean, overweight, and obese subjects
-pseq = phyloseq::subset_samples(pseq, bmi %in% c("lean", "overweight", "obese"))
-# Discard "EE" as it contains only 1 subject
-# Discard subjects with missing values of region
-pseq = phyloseq::subset_samples(pseq, ! region %in% c("EE", "unknown"))
-
-out = ancombc(data = pseq, tax_level = "Family", 
-              formula = "age + region + bmi", 
-              p_adj_method = "holm", prv_cut = 0.10, lib_cut = 1000, 
-              group = "bmi", struc_zero = TRUE, neg_lb = TRUE, tol = 1e-5, 
-              max_iter = 100, conserve = TRUE, alpha = 0.05, global = TRUE,
-              n_cl = 1, verbose = TRUE)
-
-res = out$res
-res_global = out$res_global
-```
-
 
 Importing data and running ancombc with our data:
 
@@ -255,39 +195,69 @@ rownames(annotation_col) <- rownames(sample_info)
 
 library(pheatmap)
 
-# Sorting samples by group (DayPeriod) before generating the heatmap
-sorted_samples <- sample_info[order(sample_info$DayPeriod), ]
-sorted_otu <- otu_table(phseq)[, rownames(sorted_samples)]
+# Function to get column order for each group
+get_group_col_order <- function(mat, group_labels) {
+    unique_groups <- unique(group_labels)
+    ordered_cols <- c()
+    for (grp in unique_groups) {
+        grp_cols <- which(group_labels == grp)
+        if (length(grp_cols) > 1) {
+            # Cluster columns within group
+            d <- dist(t(mat[, grp_cols, drop = FALSE]))
+            hc <- hclust(d)
+            ordered_grp_cols <- grp_cols[order.dendrogram(as.dendrogram(hc))]
+        } else {
+            ordered_grp_cols <- grp_cols
+        }
+        ordered_cols <- c(ordered_cols, ordered_grp_cols)
+    }
+    return(ordered_cols)
+}
 
-pdf("heatmap_differentially_abundant_otus.pdf", width = 10, height = 8)
-pheatmap(sorted_otu,
-      annotation_col = annotation_col[rownames(sorted_samples), , drop = FALSE],
+col_order <- get_group_col_order(otu_table(phseq), annotation_col$DayPeriod)
+heatmap_mat <- otu_table(phseq)[, col_order]
+annotation_col <- annotation_col[col_order, , drop = FALSE]
+
+ann_colors = list(
+    DayPeriod = c(day = "#FFD700", night = "#1E3A8A")
+)
+
+pdf("heatmap_differentially_abundant_otus.pdf", width = 40, height = 50)
+pheatmap(heatmap_mat,
+      annotation_col = annotation_col,
+      legend_title = "Day Period",
       cluster_cols = FALSE,  # Disable clustering for columns to preserve group order
       cluster_rows = TRUE,
       scale = "row",  # z-score normalization across each OTU
       show_rownames = TRUE,
       show_colnames = FALSE,
-      fontsize_row = 2,
+      fontsize = 22,
+      fontsize_row = 10,
+      legend = TRUE,
+      cellwidth = 6,
+      cellheight = 12,
       color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
-      main = "Heatmap of Differentially Abundant OTUs (log2 CPM)")
+      annotation_colors = ann_colors,
+      main = "Differentially Abundant OTUs (log2 CPM)")
 dev.off()
 
-png("heatmap_differentially_abundant_otus_adjusted.png", width = 1200, height = 1000, res = 300)
-pheatmap(sorted_otu,
-  annotation_col = annotation_col[rownames(sorted_samples), , drop = FALSE],
-  cluster_cols = FALSE,  # Disable clustering for columns to preserve group order
+png("heatmap_differentially_abundant_otus.png", width = 5000, height = 6000, res = 120)
+pheatmap(heatmap_mat,
+  annotation_col = annotation_col,
+  legend_title = "Day Period",
+  cluster_cols = FALSE,
   cluster_rows = TRUE,
-  scale = "row",  # z-score normalization across each OTU
+  scale = "row",
   show_rownames = TRUE,
   show_colnames = FALSE,
-  fontsize = 2,
-  fontsize_row = 1,
-  fontsize_col = 6,  # Decrease font size for column annotations
+  fontsize = 26,
+  fontsize_row = 11,
   legend = TRUE,
-  annotation_names_col = TRUE,
-  annotation_names_row = FALSE,
+  cellwidth = 6,
+  cellheight = 12,
   color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
-  main = "Heatmap of Differentially Abundant OTUs (log2 CPM)")
+  annotation_colors = ann_colors,
+  main = "Differentially Abundant OTUs (log2 CPM)")
 dev.off()
 ```
 
