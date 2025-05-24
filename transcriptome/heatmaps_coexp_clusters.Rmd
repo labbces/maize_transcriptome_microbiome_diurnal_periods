@@ -1,0 +1,228 @@
+---
+title: "Heatmaps of clusters responding to day/night in co-expression network"
+output: html_notebook
+---
+
+Importing the table with expression values of the modules
+
+```{r}
+library(dplyr)
+
+#Exp_table_long_z <- read.csv("/home/renato/projects/fapesp_bepe_pd/transcriptome/Exp_table_long_z.txt",
+Exp_table_long_z <- read.csv("/home/santosrac/Projects/UGA_RACS/Transcriptome/paper2025/paper2025/Exp_table_long_z.txt",
+                 sep = "\t",
+                 header = TRUE)
+
+day_period_responding_modules <- c(10,12,16,1,22,25,26,29,30,31,39,40,45,52,5,7,8,9)
+
+# Filter the data based on the list of modules
+Exp_table_long_z_filtered <- Exp_table_long_z %>%
+    filter(module %in% day_period_responding_modules)
+```
+
+
+
+```{r}
+library(pheatmap)
+
+# Filter for genes in module 1
+module1_genes <- Exp_table_long_z_filtered %>%
+    filter(module == 1)
+module5_genes <- Exp_table_long_z_filtered %>%
+    filter(module == 5)
+module9_genes <- Exp_table_long_z_filtered %>%
+    filter(module == 9)
+
+head(module1_genes)
+
+# Prepare matrix: rows = genes, columns = samples
+heatmap_mat <- module1_genes %>%
+    select(Name, SampleName, z.score) %>%
+    tidyr::pivot_wider(names_from = SampleName, values_from = z.score) %>%
+    tibble::column_to_rownames("Name") %>%
+    as.matrix()
+
+# Create annotation_col from columns in heatmap_mat
+sample_info <- data.frame(SampleName = colnames(heatmap_mat))
+sample_info$Period <- ifelse(grepl("exp_day", sample_info$SampleName, ignore.case = TRUE), "Day", "Night")
+row.names(sample_info) <- sample_info$SampleName
+sample_info$SampleName <- NULL
+head(sample_info)
+
+ann_colors = list(
+    Period = c(Day = "#FFD700", Night = "#1E3A8A")
+)
+
+# Export heatmap to PDF with high resolution
+pdf("module1_heatmap.pdf", width = 40, height = 30)
+pheatmap(heatmap_mat, 
+            cluster_rows = FALSE,
+            cluster_cols = TRUE,
+            scale = "row",
+            show_rownames = TRUE,
+            show_colnames = FALSE,
+            annotation_col = sample_info,
+            annotation_colors = ann_colors,
+            main = "Module 1 (Nucleic Acid Binding)",
+            annotation_legend = TRUE,
+            fontsize = 12,
+            fontsize_row = 10,
+            cellwidth = 6,
+            cellheight = 10)
+dev.off()
+
+heatmap_mat <- module5_genes %>%
+    select(Name, SampleName, z.score) %>%
+    tidyr::pivot_wider(names_from = SampleName, values_from = z.score) %>%
+    tibble::column_to_rownames("Name") %>%
+    as.matrix()
+
+pdf("module5_heatmap.pdf", width = 40, height = 30)
+pheatmap(heatmap_mat, 
+            cluster_rows = FALSE,
+            cluster_cols = TRUE,
+            scale = "row",
+            show_rownames = TRUE,
+            show_colnames = FALSE,
+            annotation_col = sample_info,
+            annotation_colors = ann_colors,
+            main = "Module 5 (Heat Stress Response)",
+            annotation_legend = TRUE,
+            fontsize = 12,
+            fontsize_row = 10,
+            cellwidth = 6,
+            cellheight = 10)
+dev.off()
+
+# Cluster columns within each group defined in sample_info$Period and reorder columns accordingly
+
+library(dendextend)
+
+# Function to get column order for each group
+get_group_col_order <- function(mat, group_labels) {
+    unique_groups <- unique(group_labels)
+    ordered_cols <- c()
+    for (grp in unique_groups) {
+        grp_cols <- which(group_labels == grp)
+        if (length(grp_cols) > 1) {
+            # Cluster columns within group
+            d <- dist(t(mat[, grp_cols, drop = FALSE]))
+            hc <- hclust(d)
+            ordered_grp_cols <- grp_cols[order.dendrogram(as.dendrogram(hc))]
+        } else {
+            ordered_grp_cols <- grp_cols
+        }
+        ordered_cols <- c(ordered_cols, ordered_grp_cols)
+    }
+    return(ordered_cols)
+}
+
+# Module 1 genes
+heatmap_mat1 <- module1_genes %>%
+    select(Name, SampleName, z.score) %>%
+    tidyr::pivot_wider(names_from = SampleName, values_from = z.score) %>%
+    tibble::column_to_rownames("Name") %>%
+    as.matrix()
+
+# Ensure sample_info matches columns
+sample_info1 <- data.frame(SampleName = colnames(heatmap_mat1))
+sample_info1$Period <- ifelse(grepl("exp_day", sample_info1$SampleName, ignore.case = TRUE), "Day", "Night")
+row.names(sample_info1) <- sample_info1$SampleName
+sample_info1$SampleName <- NULL
+
+# Get new column order
+col_order <- get_group_col_order(heatmap_mat1, sample_info1$Period)
+heatmap_mat1 <- heatmap_mat1[, col_order]
+sample_info1 <- sample_info1[col_order, , drop = FALSE]
+
+pdf("module1_heatmap.pdf", width = 40, height = 30)
+pheatmap(heatmap_mat1, 
+                 cluster_rows = FALSE,
+                 cluster_cols = FALSE,
+                 scale = "row",
+                 show_rownames = TRUE,
+                 show_colnames = FALSE,
+                 annotation_col = sample_info1,
+                 annotation_colors = ann_colors,
+                 main = "Module 1 (Nucleic Acid Binding)",
+                 annotation_legend = TRUE,
+                 fontsize = 18,
+                 fontsize_legend = 16,
+                 fontsize_row = 10,
+                 cellwidth = 6,
+                 cellheight = 10)
+dev.off()
+
+
+# Module 5 genes
+heatmap_mat5 <- module5_genes %>%
+    select(Name, SampleName, z.score) %>%
+    tidyr::pivot_wider(names_from = SampleName, values_from = z.score) %>%
+    tibble::column_to_rownames("Name") %>%
+    as.matrix()
+
+# Ensure sample_info matches columns
+sample_info5 <- data.frame(SampleName = colnames(heatmap_mat5))
+sample_info5$Period <- ifelse(grepl("exp_day", sample_info5$SampleName, ignore.case = TRUE), "Day", "Night")
+row.names(sample_info5) <- sample_info5$SampleName
+sample_info5$SampleName <- NULL
+
+# Get new column order
+col_order <- get_group_col_order(heatmap_mat5, sample_info5$Period)
+heatmap_mat5 <- heatmap_mat5[, col_order]
+sample_info5 <- sample_info5[col_order, , drop = FALSE]
+
+pdf("module5_heatmap.pdf", width = 38, height = 12)
+pheatmap(heatmap_mat5, 
+                 cluster_rows = FALSE,
+                 cluster_cols = FALSE,
+                 scale = "row",
+                 show_rownames = TRUE,
+                 show_colnames = FALSE,
+                 annotation_col = sample_info5,
+                 annotation_colors = ann_colors,
+                 main = "Module 5 (Heat Stress Response)",
+                 annotation_legend = TRUE,
+                 fontsize = 18,
+                 fontsize_legend = 16,
+                 fontsize_row = 10,
+                 cellwidth = 6,
+                 cellheight = 10)
+dev.off()
+
+# Module 9 genes
+heatmap_mat9 <- module9_genes %>%
+    select(Name, SampleName, z.score) %>%
+    tidyr::pivot_wider(names_from = SampleName, values_from = z.score) %>%
+    tibble::column_to_rownames("Name") %>%
+    as.matrix()
+
+# Ensure sample_info matches columns
+sample_info9 <- data.frame(SampleName = colnames(heatmap_mat9))
+sample_info9$Period <- ifelse(grepl("exp_day", sample_info9$SampleName, ignore.case = TRUE), "Day", "Night")
+row.names(sample_info9) <- sample_info9$SampleName
+sample_info9$SampleName <- NULL
+
+# Get new column order
+col_order <- get_group_col_order(heatmap_mat9, sample_info9$Period)
+heatmap_mat9 <- heatmap_mat9[, col_order]
+sample_info9 <- sample_info9[col_order, , drop = FALSE]
+
+pdf("module9_heatmap.pdf", width = 38, height = 8)
+pheatmap(heatmap_mat9, 
+                 cluster_rows = FALSE,
+                 cluster_cols = FALSE,
+                 scale = "row",
+                 show_rownames = TRUE,
+                 show_colnames = FALSE,
+                 annotation_col = sample_info9,
+                 annotation_colors = ann_colors,
+                 main = "Module 9 (Photosynthesis)",
+                 annotation_legend = TRUE,
+                 fontsize = 18,
+                 fontsize_legend = 16,
+                 fontsize_row = 10,
+                 cellwidth = 6,
+                 cellheight = 10)
+dev.off()
+```
