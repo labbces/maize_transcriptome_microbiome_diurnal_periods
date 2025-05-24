@@ -88,6 +88,17 @@ num_edges_night <- gsize(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net
 cat("Number of edges in the day network:", num_edges_day, "\n")
 cat("Number of edges in the night network:", num_edges_night, "\n")
 
+# Extracting degree of the nodes in the networks
+degree_day <- degree(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
+degree_night <- degree(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)
+
+# Exporting the degree of the all nodes in each network
+day_sparxcc_degree <- data.frame(Node = V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$name, Degree = degree_day)
+night_sparxcc_degree <- data.frame(Node = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$name, Degree = degree_night)
+
+write.table(day_sparxcc_degree, file = "day_network_degree.1.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(night_sparxcc_degree, file = "night_network_degree.1.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+
 # Computing the average degree for the day and night networks
 avg_degree_day <- mean(degree(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net))
 avg_degree_night <- mean(degree(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net))
@@ -119,6 +130,59 @@ centralization_betweenness_night <- centralization.betweenness(se.mb.night_otu_f
 # Printing the centralization betweenness
 cat("Centralization betweenness in the day network:", centralization_betweenness_day, "\n")
 cat("Centralization betweenness in the night network:", centralization_betweenness_night, "\n")
+```
+
+## Scatter plots of node degree and abundance:
+
+```{r}
+library(dplyr)
+library(tibble)
+
+day_otu_filtered_sparxcc_wallace2018_cpm <- sweep(day_otu_filtered_sparxcc_wallace2018, 2, colSums(day_otu_filtered_sparxcc_wallace2018, na.rm = TRUE), FUN = "/") * 1e6
+night_otu_filtered_sparxcc_wallace2018_cpm <- sweep(night_otu_filtered_sparxcc_wallace2018, 2, colSums(night_otu_filtered_sparxcc_wallace2018, na.rm = TRUE), FUN = "/") * 1e6
+
+day_otu_abundance_df <- day_otu_filtered_sparxcc_wallace2018_cpm %>%
+  as.data.frame() %>%
+  rownames_to_column("OTU") %>%
+  mutate(mean_abundance = rowMeans(across(where(is.numeric))))
+
+night_otu_abundance_df <- night_otu_filtered_sparxcc_wallace2018_cpm %>%
+    as.data.frame() %>%
+    rownames_to_column("OTU") %>%
+    mutate(mean_abundance = rowMeans(across(where(is.numeric))))
+
+degree_day <- data.frame(OTU = names(degree_day), Degree = as.numeric(degree_day))
+degree_night <- data.frame(OTU = names(degree_night), Degree = as.numeric(degree_night))
+
+day_otu_summary <- left_join(day_otu_abundance_df, degree_day, by = "OTU")
+night_otu_summary <- left_join(night_otu_abundance_df, degree_night, by = "OTU")
+
+library(ggplot2)
+
+# Day network: Degree vs Mean Abundance
+pdf("day_network_degree_vs_abundance.pdf", width = 6, height = 6)
+ggplot(day_otu_summary, aes(x = Degree, y = mean_abundance)) +
+    geom_point(alpha = 0.7) +
+    geom_smooth(method = "lm", se = TRUE, color = "blue") +
+    theme_minimal() +
+    labs(title = "OTU Degree vs Mean Abundance",
+            x = "Degree (network centrality)",
+            y = "Mean Relative Abundance") +
+    scale_y_log10()
+dev.off()
+
+# Night network: Degree vs Mean Abundance
+pdf("night_network_degree_vs_abundance.pdf", width = 6, height = 6)
+ggplot(night_otu_summary, aes(x = Degree, y = mean_abundance)) +
+    geom_point(alpha = 0.7) +
+    geom_smooth(method = "lm", se = TRUE, color = "blue") +
+    theme_minimal() +
+    labs(title = "OTU Degree vs Mean Abundance",
+            x = "Degree (network centrality)",
+            y = "Mean Relative Abundance") +
+    scale_y_log10()
+dev.off()
+
 ```
 
 ## Clustering the network (Louvain):
