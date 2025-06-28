@@ -13,17 +13,19 @@ library(tidyverse)
 library(ANCOMBC)
 library(phyloseq)
 library(edgeR)
+library(RColorBrewer)
+library(scico)
 ```
 
-Importing data and running ancombc with our data:
+#Importing data and running ancombc with our data:
 
-```{r}
 # Importing day and night count matrices (filtered by rel. abundance and coefficient of variation)
-day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+
 #day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^", "day_", colnames(day_otu_filtered_sparxcc_wallace2018))
-night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 #night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^", "night_", colnames(night_otu_filtered_sparxcc_wallace2018))
@@ -37,7 +39,7 @@ merged_otu_filtered_sparxcc_wallace2018 <- merged_otu_filtered_sparxcc_wallace20
 dim(merged_otu_filtered_sparxcc_wallace2018)
 head(merged_otu_filtered_sparxcc_wallace2018)
 
-metadata <- read.csv('/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
+metadata <- read.csv('sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
 #metadata <- read.csv('/home/renato/repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
 dim(metadata)
 head(metadata)
@@ -80,13 +82,13 @@ col_name = c("Taxon", "Intercept", "Subpopulation Mixed", "Subpopulation Non-sti
              #"Subpopulationstiff stalk:DayPeriodnight", "Subpopulationsweet:DayPeriodnight", "Subpopulationtropical-subtropical:DayPeriodnight",
              #"Subpopulationunclassified:DayPeriodnight")
 colnames(tab_lfc) = col_name
-tab_lfc %>% 
+aux1 <- tab_lfc %>% 
   datatable(caption = "Log Fold Changes from the Primary Result") %>%
   formatRound(col_name[-1], digits = 2)
 
 tab_diff = res$diff_abn
 colnames(tab_diff) = col_name
-tab_diff %>% 
+aux2 <- tab_diff %>% 
   datatable(caption = "Differentially Abundant Taxa from the Primary Result")
 
 (res$q_val < 0.05 & res$diff_abn == TRUE)
@@ -117,7 +119,7 @@ tail(filtered_results_sorted_lfc, n = 10)
 write.csv(filtered_results_sorted_lfc, file = "filtered_results_sorted_lfc.csv", row.names = FALSE)
 
 # Import the GTDB taxonomy table
-gtdb_taxonomy <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/otu_taxonomy/gtdb_taxonomy.tsv", sep='\t', header=TRUE)
+gtdb_taxonomy <- read.csv("gtdb_taxonomy.tsv", sep='\t', header=TRUE)
 gtdb_taxonomy <- gtdb_taxonomy[, -3]
 rownames(gtdb_taxonomy) <- gtdb_taxonomy$Feature.ID
 head(gtdb_taxonomy)
@@ -203,7 +205,9 @@ ggplot(df_plot, aes(x = DayPeriod, y = Abundance, fill = DayPeriod)) +
   theme(strip.text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1))
 
 sample_info <- data.frame(sample_data(phseq))
+#annotation_col <- data.frame(DayPeriod = sample_info$DayPeriod, Subpopulation = sample_info$Subpopulation)
 annotation_col <- data.frame(DayPeriod = sample_info$DayPeriod)
+
 rownames(annotation_col) <- rownames(sample_info)
 
 library(pheatmap)
@@ -230,53 +234,114 @@ get_group_col_order <- function(mat, group_labels) {
 col_order <- get_group_col_order(otu_table(phseq), annotation_col$DayPeriod)
 heatmap_mat <- otu_table(phseq)[, col_order]
 annotation_col <- annotation_col[col_order, , drop = FALSE]
-
+colorSubpopulations = brewer.pal(n = 8, name = "Set2")
 ann_colors = list(
     DayPeriod = c(day = "#FFD700", night = "#1E3A8A")
-)
+#    Subpopulation = colorSubpopulations
+    )
+#names(ann_colors$Subpopulation) <- levels(as.factor(sample_info$Subpopulation))
+breaksList = seq(-2, 2, by = 0.1)
 
-pdf("heatmap_differentially_abundant_otus.pdf", width = 40, height = 50)
-pheatmap(heatmap_mat,
+p <- pheatmap(heatmap_mat[filtered_results$Taxon,],
       annotation_col = annotation_col,
       legend_title = "Day Period",
       cluster_cols = FALSE,  # Disable clustering for columns to preserve group order
       cluster_rows = TRUE,
+      gaps_row = F,
+      gaps_cols = F,
+      cutree_rows = 10,
+      border_color = NA,
       scale = "row",  # z-score normalization across each OTU
-      show_rownames = TRUE,
+      show_rownames = FALSE,
       show_colnames = FALSE,
-      fontsize = 22,
-      fontsize_row = 10,
+#      fontsize = 12,  
+#      fontsize_row =6,
       legend = TRUE,
-      cellwidth = 6,
-      cellheight = 12,
-      color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
+      cellwidth = 0.5,
+      cellheight = 2*2,
+      color = scico(length(breaksList), palette = 'vikO'),
+      breaks = breaksList,
       annotation_colors = ann_colors,
+      silent = F,
       main = "Differentially Abundant OTUs (log2 CPM)")
+
+grob <- p$gtable
+
+pdf("heatmap_differentially_abundant_otus.pdf")
+grid::grid.newpage()
+grid::grid.draw(grob)
 dev.off()
 
-png("heatmap_differentially_abundant_otus.png", width = 5000, height = 6000, res = 120)
-pheatmap(heatmap_mat,
-  annotation_col = annotation_col,
-  legend_title = "Day Period",
-  cluster_cols = FALSE,
-  cluster_rows = TRUE,
-  scale = "row",
-  show_rownames = TRUE,
-  show_colnames = FALSE,
-  fontsize = 26,
-  fontsize_row = 11,
-  legend = TRUE,
-  cellwidth = 6,
-  cellheight = 12,
-  color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
-  annotation_colors = ann_colors,
-  main = "Differentially Abundant OTUs (log2 CPM)")
+png("heatmap_differentially_abundant_otus.png", width = 1600, height = 2100, res = 300)
+grid::grid.newpage()
+grid::grid.draw(grob)
 dev.off()
-```
 
+### HEATMAP GROUPS OF OUTS
 
+df <- heatmap_mat[filtered_results$Taxon,]
 
+tmp <- pheatmap(df, cluster_rows = T, cluster_cols = T, scale = "row")
+clusters_otus <- as.data.frame(cutree(tmp$tree_row, k = 10))
+colnames(clusters_otus) <- "cluster"
 
+get_eigen <- function(module_no){
+	otu <- row.names(clusters_otus %>% filter(cluster == module_no))
+        mat <- df[otu,]
+	pca <- prcomp(t(mat))
+	eigen <-pca$x[,1]
+	row <- data.frame(eigen = t(eigen), row.names = paste0("Cluster_",module_no))
+	colnames(row) <- names(eigen)
+	return(row)
+}
 
+results_list <- list()
+loop_modules <- levels(as.factor(clusters_otus$cluster))
+for (module in loop_modules){
+	result <- get_eigen(module)
+        results_list[[as.character(module)]] <- result
+	cat("Module:", module, "\n")
+}
+
+results_df <- bind_rows(results_list, .id = "module")
+
+eigen_mat <- results_df %>%
+        select(-module) %>%
+        as.matrix()
+
+ann_colors = list(DayPeriod = c(day = "#FFD700", night = "#1E3A8A"))
+
+#sample_info <- data.frame(SampleName = colnames(results_df))
+#sample_info$Period <- ifelse(grepl("exp_day", sample_info$SampleName, ignore.case = TRUE), "Day", "Night")
+#row.names(sample_info) <- sample_info$SampleName
+#sample_info$SampleName <- NULL
+
+breaksList = seq(-2, 2, by = 0.1)
+
+p <- pheatmap(eigen_mat,
+	      main = "PUT SOMETHING HERE",
+	      scale = "row",
+	      annotation_col = annotation_col,
+	      show_rownames = T,
+	      show_colnames = F,
+	      breaks = breaksList,
+	      annotation_colors = ann_colors,
+	      col = scico(length(breaksList), palette = 'vikO'),
+	      cluster_cols = F,
+	      cluster_rows = T,
+	      cellwidth = 1,
+	      cellheight = 9)
+
+grob <- p$gtable
+
+pdf("heatmap_clusters_otus.pdf")
+grid::grid.newpage()
+grid::grid.draw(grob)
+dev.off()
+
+png("heatmap_clusters_otus.png", res = 300, width = 2.4*1200, height = 2500)
+grid::grid.newpage()
+grid::grid.draw(grob)
+dev.off()
 
 
