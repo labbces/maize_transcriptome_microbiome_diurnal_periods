@@ -12,8 +12,8 @@ library(RColorBrewer)
 library(scico)
 library(pheatmap)
 
-#Exp_table_long_z <- read.csv("/home/renato/projects/fapesp_bepe_pd/transcriptome/Exp_table_long_z.txt",
-Exp_table_long_z <- read.csv("Exp_table_long_z.txt",
+Exp_table_long_z <- read.csv("/home/santosrac/Projects/UGA_RACS/Transcriptome/paper2025/paper2025/Exp_table_long_z.txt",
+#Exp_table_long_z <- read.csv("Exp_table_long_z.txt",
                  sep = "\t",
                  header = TRUE)
 
@@ -81,7 +81,8 @@ p <- pheatmap(eigen_mat,
 
 grob <- p$gtable
 
-pdf("heatmap_eigengenes.pdf")
+
+pdf("heatmap_eigengenes.pdf", width = 9, height = 4)
 grid::grid.newpage()
 grid::grid.draw(grob)
 dev.off()
