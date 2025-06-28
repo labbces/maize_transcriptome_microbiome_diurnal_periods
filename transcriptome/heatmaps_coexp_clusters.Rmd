@@ -7,9 +7,13 @@ Importing the table with expression values of the modules
 
 ```{r}
 library(dplyr)
+library(tidyverse)
+library(RColorBrewer)
+library(scico)
+library(pheatmap)
 
 #Exp_table_long_z <- read.csv("/home/renato/projects/fapesp_bepe_pd/transcriptome/Exp_table_long_z.txt",
-Exp_table_long_z <- read.csv("/home/santosrac/Projects/UGA_RACS/Transcriptome/paper2025/paper2025/Exp_table_long_z.txt",
+Exp_table_long_z <- read.csv("Exp_table_long_z.txt",
                  sep = "\t",
                  header = TRUE)
 
@@ -18,9 +22,75 @@ day_period_responding_modules <- c(10,12,16,1,22,25,26,29,30,31,39,40,45,52,5,7,
 # Filter the data based on the list of modules
 Exp_table_long_z_filtered <- Exp_table_long_z %>%
     filter(module %in% day_period_responding_modules)
+
+## make eigengenes heatmap for modules responding to day-night
+# make wide matrix for logTPM
+Exp_wide <- Exp_table_long_z_filtered %>%
+  select(Name, SampleName, logTPM) %>%
+  pivot_wider(names_from = SampleName, values_from = logTPM)
+
+# Set Name as rownames and remove the Name column (transform into a matrix)
+Exp_wide_matrix <- Exp_wide %>%
+  column_to_rownames(var = "Name")
+
+
+get_eigen <- function(module_no){
+	genes <- Exp_table_long_z_filtered %>% filter(module == module_no) %>% distinct(Name) %>% pull(Name)
+	df <- Exp_wide_matrix[genes,]
+	pca <- prcomp(t(df))
+	eigen <-pca$x[,1]
+	row <- data.frame(eigen = t(eigen), row.names = paste0("module_",module_no))
+	return(row)
+}
+
+results_list <- list()
+loop_modules <- levels(as.factor(Exp_table_long_z_filtered$module))
+
+for (module in loop_modules){
+        result <- get_eigen(module)
+        results_list[[as.character(module)]] <- result
+	cat("Module:", module, "\n")
+}
+
+results_df <- bind_rows(results_list, .id = "module")
+
+eigen_mat <- results_df %>%
+	select(-module) %>%
+	as.matrix()
+
+ann_colors = list(Period = c(Day = "#FFD700", Night = "#1E3A8A"))
+
+sample_info <- data.frame(SampleName = colnames(results_df))
+sample_info$Period <- ifelse(grepl("exp_day", sample_info$SampleName, ignore.case = TRUE), "Day", "Night")
+row.names(sample_info) <- sample_info$SampleName
+sample_info$SampleName <- NULL
+
+p <- pheatmap(eigen_mat,
+	 main = "PUT SOMETHING HERE",
+	 scale = "row",
+	 annotation_col = sample_info,
+	 show_rownames = T,
+	 show_colnames = F,
+	 annotation_colors = ann_colors,
+	 col = scico(100, palette = 'vikO'),
+	 cluster_cols = T,
+	 cluster_rows = T,
+	 cellwidth = 1,
+	 cellheight = 9)
+
+
+grob <- p$gtable
+
+pdf("heatmap_eigengenes.pdf")
+grid::grid.newpage()
+grid::grid.draw(grob)
+dev.off()
+
+png("heatmap_eigengenes.png", res = 300, width = 2.4*1200, height = 2500)
+grid::grid.newpage()
+grid::grid.draw(grob)
+dev.off()
 ```
-
-
 
 ```{r}
 library(pheatmap)
