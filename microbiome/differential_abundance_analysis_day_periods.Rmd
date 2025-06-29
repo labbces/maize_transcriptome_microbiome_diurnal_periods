@@ -17,16 +17,12 @@ library(RColorBrewer)
 library(scico)
 ```
 
-#Importing data and running ancombc with our data:
-
 # Importing day and night count matrices (filtered by rel. abundance and coefficient of variation)
-day_otu_filtered_sparxcc_wallace2018 <- read.csv('filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 
-#day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+day_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_day_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(day_otu_filtered_sparxcc_wallace2018))
 colnames(day_otu_filtered_sparxcc_wallace2018) <- gsub("^", "day_", colnames(day_otu_filtered_sparxcc_wallace2018))
-night_otu_filtered_sparxcc_wallace2018 <- read.csv('filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
-#night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/renato/projects/fapesp_bepe_pd/microbiome/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
+night_otu_filtered_sparxcc_wallace2018 <- read.csv('/home/santosrac/Projects/UGA_RACS/IntegrationMetataxExpression/SparXCC_OTUs_paper/filtered_otu_table_night_filtered_rel_abund_cv_filtered.tsv', sep='\t', header=TRUE, row.names=1)
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^X", "", colnames(night_otu_filtered_sparxcc_wallace2018))
 colnames(night_otu_filtered_sparxcc_wallace2018) <- gsub("^", "night_", colnames(night_otu_filtered_sparxcc_wallace2018))
 head(day_otu_filtered_sparxcc_wallace2018)
@@ -39,8 +35,7 @@ merged_otu_filtered_sparxcc_wallace2018 <- merged_otu_filtered_sparxcc_wallace20
 dim(merged_otu_filtered_sparxcc_wallace2018)
 head(merged_otu_filtered_sparxcc_wallace2018)
 
-metadata <- read.csv('sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
-#metadata <- read.csv('/home/renato/repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
+metadata <- read.csv('/home/santosrac/Repositories/maize_transcriptome_microbiome_networks/sample_annotation.txt', sep='\t', header=TRUE, row.names=1)
 dim(metadata)
 head(metadata)
 # Removing substring from the beginning of row names
@@ -119,7 +114,7 @@ tail(filtered_results_sorted_lfc, n = 10)
 write.csv(filtered_results_sorted_lfc, file = "filtered_results_sorted_lfc.csv", row.names = FALSE)
 
 # Import the GTDB taxonomy table
-gtdb_taxonomy <- read.csv("gtdb_taxonomy.tsv", sep='\t', header=TRUE)
+gtdb_taxonomy <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/otu_taxonomy/gtdb_taxonomy.tsv", sep='\t', header=TRUE)
 gtdb_taxonomy <- gtdb_taxonomy[, -3]
 rownames(gtdb_taxonomy) <- gtdb_taxonomy$Feature.ID
 head(gtdb_taxonomy)
@@ -242,9 +237,15 @@ ann_colors = list(
 #names(ann_colors$Subpopulation) <- levels(as.factor(sample_info$Subpopulation))
 breaksList = seq(-2, 2, by = 0.1)
 
+# Update annotation_col and ann_colors for new group names
+colnames(annotation_col)[colnames(annotation_col) == "DayPeriod"] <- "Period"
+annotation_col$Period <- recode(annotation_col$Period, day = "Midday", night = "Midnight")
+ann_colors$Period <- c(Midday = "#FFD700", Midnight = "#1E3A8A")
+
+
 p <- pheatmap(heatmap_mat[filtered_results$Taxon,],
       annotation_col = annotation_col,
-      legend_title = "Day Period",
+      legend_title = "Period",
       cluster_cols = FALSE,  # Disable clustering for columns to preserve group order
       cluster_rows = TRUE,
       gaps_row = F,
@@ -254,8 +255,6 @@ p <- pheatmap(heatmap_mat[filtered_results$Taxon,],
       scale = "row",  # z-score normalization across each OTU
       show_rownames = FALSE,
       show_colnames = FALSE,
-#      fontsize = 12,  
-#      fontsize_row =6,
       legend = TRUE,
       cellwidth = 0.5,
       cellheight = 2*2,
