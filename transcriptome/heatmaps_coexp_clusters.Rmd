@@ -35,13 +35,23 @@ Exp_wide_matrix <- Exp_wide %>%
 
 
 get_eigen <- function(module_no){
-	genes <- Exp_table_long_z_filtered %>% filter(module == module_no) %>% distinct(Name) %>% pull(Name)
-	df <- Exp_wide_matrix[genes,]
-	pca <- prcomp(t(df))
-	eigen <-pca$x[,1]
-	row <- data.frame(eigen = t(eigen), row.names = paste0("module_",module_no))
-	return(row)
+        genes <- Exp_table_long_z_filtered %>% filter(module == module_no) %>% distinct(Name) %>% pull(Name)
+        df <- Exp_wide_matrix[genes,]
+        pca <- prcomp(t(df))
+        eigen <- pca$x[,1]
+        # Calculate module eigengene as the mean expression across all genes in the module
+        module_mean <- colMeans(df, na.rm = TRUE)
+        # Check correlation between PC1 and module mean
+        correlation <- cor(eigen, module_mean)
+        # If correlation is negative, flip the eigengene
+	if(correlation < 0) {
+                eigen <- -eigen
+        
+	}
+        row <- data.frame(eigen = t(eigen), row.names = paste0("module_",module_no))
+        return(row)
 }
+
 
 results_list <- list()
 loop_modules <- levels(as.factor(Exp_table_long_z_filtered$module))
@@ -60,7 +70,7 @@ eigen_mat <- results_df %>%
 
 ann_colors = list(Period = c(Day = "#FFD700", Night = "#1E3A8A"))
 
-sample_info <- data.frame(SampleName = colnames(results_df))
+sample_info <- data.frame(SampleName = colnames(Exp_wide_matrix))
 sample_info$Period <- ifelse(grepl("exp_day", sample_info$SampleName, ignore.case = TRUE), "Day", "Night")
 row.names(sample_info) <- sample_info$SampleName
 sample_info$SampleName <- NULL
@@ -91,6 +101,47 @@ png("heatmap_eigengenes.png", res = 300, width = 2.4*1200, height = 2500)
 grid::grid.newpage()
 grid::grid.draw(grob)
 dev.off()
+
+########################################
+# make heatmaps for all responding modules #
+########################################
+
+get_module_heatmap <- function(module_no){
+	genes <- Exp_table_long_z_filtered %>% filter(module == module_no) %>% distinct(Name) %>% pull(Name)
+        df <- Exp_wide_matrix[genes,]
+        breaksList = seq(-3, 3, by = 0.1)
+        p <- pheatmap(df,
+                         main = paste0("Module: ", module_no),
+                         scale = "row",
+                         annotation_col = sample_info,
+                         show_rownames = F,
+                         show_colnames = F,
+                         breaks = breaksList,
+                         annotation_colors = ann_colors,
+                         color = scico(length(breaksList), palette = 'vikO'),
+                         cluster_cols = T,
+                         cluster_rows = T,
+                         cellwidth = 1,
+                         cellheight = 1.3)
+	grob <- p$gtable
+
+	pdf(paste0("module_", module_no, "_heatmap", ".pdf"), width = 9, height = 4)
+        grid::grid.newpage()
+        grid::grid.draw(grob)
+        dev.off()
+
+        png(paste0("module_", module_no, "_heatmap", ".png"), res = 300, width = 2.4*1200, height = 2500)
+        grid::grid.newpage()
+        grid::grid.draw(grob)
+        dev.off()
+}
+
+for (module in loop_modules){
+        get_module_heatmap(module)
+        cat("Module:", module, "\n")
+
+}
+
 ```
 
 ```{r}
