@@ -68,15 +68,18 @@ eigen_mat <- results_df %>%
 	select(-module) %>%
 	as.matrix()
 
-ann_colors = list(Period = c(Day = "#FFD700", Night = "#1E3A8A"))
-
-sample_info <- data.frame(SampleName = colnames(Exp_wide_matrix))
-sample_info$Period <- ifelse(grepl("exp_day", sample_info$SampleName, ignore.case = TRUE), "Day", "Night")
+sample_info <- data.frame(SampleName = colnames(eigen_mat))
+sample_info$Period <- ifelse(grepl("eigen.exp_day", sample_info$SampleName, ignore.case = TRUE), "Midday", "Midnight")
 row.names(sample_info) <- sample_info$SampleName
 sample_info$SampleName <- NULL
 
+head(sample_info)
+
+ann_colors = list(Period = c(Midday = "#FFD700", Midnight = "#1E3A8A"))
+
+rownames(eigen_mat) <- gsub("_", " ", rownames(eigen_mat))
+
 p <- pheatmap(eigen_mat,
-	 main = "PUT SOMETHING HERE",
 	 scale = "row",
 	 annotation_col = sample_info,
 	 show_rownames = T,
