@@ -290,6 +290,16 @@ get_eigen <- function(module_no){
         mat <- df[otu,]
 	pca <- prcomp(t(mat))
 	eigen <-pca$x[,1]
+
+	# Calculate module eigengene as the mean expression across all genes in the module
+        module_mean <- colMeans(mat, na.rm = TRUE)
+        # Check correlation between PC1 and module mean
+        correlation <- cor(eigen, module_mean)
+        # If correlation is negative, flip the eigengene
+	if(correlation < 0) {
+                eigen <- -eigen
+        
+	}
 	row <- data.frame(eigen = t(eigen), row.names = paste0("Cluster_",module_no))
 	colnames(row) <- names(eigen)
 	return(row)
