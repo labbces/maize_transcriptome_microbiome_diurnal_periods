@@ -1,0 +1,42 @@
+---
+title: "Plotting PCoA of Weighted UniFrac Distances (exported from Qiime2)"
+output: html_notebook
+---
+
+# Exporting PCoA results from Qiime2
+
+```{r}
+#Code to export the PCoA results from Qiime2 and get the first two coordinates
+#conda activate qiime2-2023.7
+#qiime tools export --input-path weighted_unifrac_pcoa_results.qza --output-path exported_weighted_unifrac_pcoa_results
+#cut -f1,2,3 ordination.txt > values_2d_plot.txt
+#Manual edits were done to remove a few extra lines from beginning and botton of file
+#perl -e 'while (<>) { chomp; s/_n/_n\tMidnight/; s/_d/_d\tMidday/; print "$_\n"; }' values_2d_plot.txt > values_2d_plot.mod.txt
+```
+
+# Creating customized PCoA plot with ggplot2
+
+```{r}
+library(ggplot2)
+
+# Load the modified 2D plot data
+plot_data <- read.table("/home/santosrac/Projects/UGA_RACS/16S/DiversityAnalysis/diversity-core-metrics-phylogenetic/exported_weighted_unifrac_pcoa_results/values_2d_plot.mod.txt", header = TRUE)
+
+# Set custom colors for Period
+period_colors <- c("Midday" = "#FFD700", "Midnight" = "#1E3A8A")
+
+# Create the PCoA plot
+ggplot(plot_data, aes(x = PC1, y = PC2, color = Period)) +
+  geom_point(size = 1.5, alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "PCoA of Weighted UniFrac Distances",
+       x = "PC1 (27.37%)",
+       y = "PC2 (13.98%)",
+       color = "Period") +
+  scale_color_manual(values = period_colors) +
+  theme(panel.border = element_rect(colour = "black", fill = NA, linewidth = 1))
+
+ggsave("weighted_unifrac_pcoa_plot_white_bg.png",
+    plot = last_plot(),
+    width = 7, height = 5, dpi = 300, bg = "white")
+```
