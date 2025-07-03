@@ -34,7 +34,8 @@ ggplot(plot_data, aes(x = PC1, y = PC2, color = Period)) +
        y = "PC2 (13.98%)",
        color = "Period") +
   scale_color_manual(values = period_colors) +
-  theme(panel.border = element_rect(colour = "black", fill = NA, linewidth = 1))
+  theme(panel.border = element_rect(colour = "black", fill = NA, linewidth = 1),
+    panel.grid = element_blank())
 
 ggsave("weighted_unifrac_pcoa_plot_white_bg.png",
     plot = last_plot(),
