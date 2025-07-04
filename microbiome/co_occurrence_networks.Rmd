@@ -80,6 +80,22 @@ E(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight <- night_
 ## Computing network metrics:
 
 ```{r}
+# Extracting positive and negative edges for day network
+day_edges <- as_data_frame(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net, what = "edges")
+day_edges$sign <- ifelse(day_edges$weight > 0, "positive", ifelse(day_edges$weight < 0, "negative", "zero"))
+day_edges_positive <- subset(day_edges, sign == "positive")
+day_edges_negative <- subset(day_edges, sign == "negative")
+dim(day_edges_negative)
+dim(day_edges_positive)
+
+# Extracting positive and negative edges for night network
+night_edges <- as_data_frame(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, what = "edges")
+night_edges$sign <- ifelse(night_edges$weight > 0, "positive", ifelse(night_edges$weight < 0, "negative", "zero"))
+night_edges_positive <- subset(night_edges, sign == "positive")
+night_edges_negative <- subset(night_edges, sign == "negative")
+dim(night_edges_negative)
+dim(night_edges_positive)
+
 # Extracting the number of edges from the networks
 num_edges_day <- gsize(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
 num_edges_night <- gsize(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)
