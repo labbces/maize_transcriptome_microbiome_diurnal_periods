@@ -181,6 +181,9 @@ ggplot(day_otu_summary, aes(x = Degree, y = mean_abundance)) +
     geom_point(alpha = 0.7) +
     geom_smooth(method = "lm", se = TRUE, color = "blue") +
     theme_minimal() +
+    theme(panel.grid = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black")) +
     labs(title = "OTU Degree vs Mean Abundance",
             x = "Degree (network centrality)",
             y = "Mean Relative Abundance") +
@@ -193,9 +196,42 @@ ggplot(night_otu_summary, aes(x = Degree, y = mean_abundance)) +
     geom_point(alpha = 0.7) +
     geom_smooth(method = "lm", se = TRUE, color = "blue") +
     theme_minimal() +
+    theme(panel.grid = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black")) +
     labs(title = "OTU Degree vs Mean Abundance",
             x = "Degree (network centrality)",
             y = "Mean Relative Abundance") +
+    scale_y_log10()
+dev.off()
+
+# Export day network plot to high resolution PNG
+png("day_network_degree_vs_abundance.png", width = 2400, height = 2400, res = 300)
+ggplot(day_otu_summary, aes(x = Degree, y = mean_abundance)) +
+    geom_point(alpha = 0.7) +
+    geom_smooth(method = "lm", se = TRUE, color = "blue") +
+    theme_minimal() +
+    theme(panel.grid = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black")) +
+    labs(title = "OTU Degree vs Mean Abundance",
+         x = "Degree (network centrality)",
+         y = "Mean Relative Abundance") +
+    scale_y_log10()
+dev.off()
+
+# Export night network plot to high resolution PNG
+png("night_network_degree_vs_abundance.png", width = 2400, height = 2400, res = 300)
+ggplot(night_otu_summary, aes(x = Degree, y = mean_abundance)) +
+    geom_point(alpha = 0.7) +
+    geom_smooth(method = "lm", se = TRUE, color = "blue") +
+    theme_minimal() +
+    theme(panel.grid = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black")) +
+    labs(title = "OTU Degree vs Mean Abundance",
+         x = "Degree (network centrality)",
+         y = "Mean Relative Abundance") +
     scale_y_log10()
 dev.off()
 
