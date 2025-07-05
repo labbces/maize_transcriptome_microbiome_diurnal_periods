@@ -10,10 +10,15 @@ Before reconstruction of co-occurrence networks, OTUs were filtered based on rel
 The OTU counts are used in the construction of the networks.
 
 ```{r}
-#library(devtools)
-#install_github("zdk123/SpiecEasi")
 library(SpiecEasi)
 library(igraph)
+library(dplyr)
+library(tibble)
+library(ggplot2)
+
+# Documentation: https://search.r-project.org/CRAN/refmans/brainGraph/html/vertex_roles.html
+# Zi (within module connectivity)
+library(brainGraph)
 ```
 
 ```{r}
@@ -151,9 +156,6 @@ cat("Centralization betweenness in the night network:", centralization_betweenne
 ## Scatter plots of node degree and abundance:
 
 ```{r}
-library(dplyr)
-library(tibble)
-
 day_otu_filtered_sparxcc_wallace2018_cpm <- sweep(day_otu_filtered_sparxcc_wallace2018, 2, colSums(day_otu_filtered_sparxcc_wallace2018, na.rm = TRUE), FUN = "/") * 1e6
 night_otu_filtered_sparxcc_wallace2018_cpm <- sweep(night_otu_filtered_sparxcc_wallace2018, 2, colSums(night_otu_filtered_sparxcc_wallace2018, na.rm = TRUE), FUN = "/") * 1e6
 
@@ -172,8 +174,6 @@ degree_night <- data.frame(OTU = names(degree_night), Degree = as.numeric(degree
 
 day_otu_summary <- left_join(day_otu_abundance_df, degree_day, by = "OTU")
 night_otu_summary <- left_join(night_otu_abundance_df, degree_night, by = "OTU")
-
-library(ggplot2)
 
 # Day network: Degree vs Mean Abundance
 pdf("day_network_degree_vs_abundance.pdf", width = 6, height = 6)
@@ -234,7 +234,6 @@ ggplot(night_otu_summary, aes(x = Degree, y = mean_abundance)) +
          y = "Mean Relative Abundance") +
     scale_y_log10()
 dev.off()
-
 ```
 
 ## Clustering the network (Louvain):
@@ -248,6 +247,13 @@ day_sparxcc_temp <- as.data.frame(day_sparxcc_temp)
 day_sparxcc_temp$louvain <- membership(day_sparxcc_wt)
 day_sparxcc_wt
 
+day_louvain_df <- data.frame(
+    OTU = day_sparxcc_wt$names,
+    Louvain_Cluster = day_sparxcc_wt$membership
+)
+head(day_louvain_df)
+dim(day_louvain_df)
+
 RNGkind("L'Ecuyer-CMRG")
 set.seed(1234)
 night_sparxcc_wt <- cluster_louvain(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, weights = E(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net.dist)$weight)
@@ -255,6 +261,17 @@ night_sparxcc_temp <- V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)
 night_sparxcc_temp <- as.data.frame(night_sparxcc_temp)
 night_sparxcc_temp$louvain <- membership(night_sparxcc_wt)
 night_sparxcc_wt
+
+night_louvain_df <- data.frame(
+    OTU = night_sparxcc_wt$names,
+    Louvain_Cluster = night_sparxcc_wt$membership
+)
+head(night_louvain_df)
+dim(night_louvain_df)
+
+# Write Louvain clustering results to file
+write.table(day_louvain_df, file = "day_network_louvain_clusters.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(night_louvain_df, file = "night_network_louvain_clusters.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
 
 V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain <- day_sparxcc_temp$louvain
 V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)
@@ -293,10 +310,6 @@ Using function from the [brainGraph R library](https://cran.r-project.org/web/pa
 
 
 ```{r}
-#install.packages("brainGraph")
-library(brainGraph)
-# Documentation: https://search.r-project.org/CRAN/refmans/brainGraph/html/vertex_roles.html
-# Zi (within module connectivity)
 Zi_day <- within_module_deg_z_score(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net, V(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain)
 Zi_night <- within_module_deg_z_score(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net, V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$louvain)
 
