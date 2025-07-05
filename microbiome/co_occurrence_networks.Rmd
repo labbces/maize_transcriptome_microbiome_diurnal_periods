@@ -332,8 +332,8 @@ se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df <- data.frame(Node = 
            Pi = V(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net)$Pi)
 
 # Write dataframes to tabular files
-write.table(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "day_network_zi_pi_metrics.1.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
-write.table(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "night_network_zi_pi_metrics.1.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(se.mb.day_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "day_network_zi_pi_metrics.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(se.mb.night_otu_filtered_sparxcc_wallace2018.matrix_net_df, file = "night_network_zi_pi_metrics.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
 
 # Adding titles to the plots
 png(filename = "day_Pi_Zi_plot_with_title.1.png")
