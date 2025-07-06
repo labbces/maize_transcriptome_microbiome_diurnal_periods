@@ -1,0 +1,106 @@
+---
+title: "Plotting group significances (exported from Qiime2)"
+output: html_notebook
+---
+
+Plots for:
+
+ * beta diversity significance (PERMANOVA)
+ * alpha diversity significance (Shannon, Evenness, Faith's PD)
+
+```{r, include=FALSE}
+evenness_data <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/DiversityAnalysis/evenness_metadata.tsv", sep="\t")
+shannon_data <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/DiversityAnalysis/shannon_metadata.tsv", sep="\t")
+faiths_pd_data <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/DiversityAnalysis/faiths_pd_metadata.tsv", sep="\t")
+permanova_raw_data <- read.csv("/home/santosrac/Projects/UGA_RACS/16S/DiversityAnalysis/permanova_raw_data.tsv", sep="\t")
+
+library(ggplot2)
+library(dplyr)
+
+evenness_data$day_period <- recode(evenness_data$day_period, "day" = "Midday", "night" = "Midnight")
+evenness_data$day_period <- factor(evenness_data$day_period, levels = c("Midday", "Midnight"))
+evenness_colors <- c("Midday" = "#FFD700", "Midnight" = "#1E3A8A")
+evenness_label <- "p-value = 0.27 (Kruskal-Wallis test)"
+
+evenness_plot <- ggplot(evenness_data, aes(x = as.factor(day_period), y = pielou_evenness)) +
+    geom_boxplot(aes(fill = day_period)) +
+    scale_fill_manual(values = evenness_colors) +
+    labs(
+        x = "Diurnal Period",
+        y = "Pielou Evenness",
+        title = NULL
+    ) +
+    theme_minimal(base_family = "sans") +
+    theme(
+        legend.position = "none",
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        plot.background = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        axis.line = element_line(color = "black", linewidth = 0.8)
+    ) +
+    annotate("text", x = 1.5, y = min(evenness_data$pielou_evenness, na.rm = TRUE), 
+             label = evenness_label, vjust = -0.5, size = 3)
+
+ggsave("evenness_by_period.png", evenness_plot, width = 6, height = 5, dpi = 300)
+ggsave("evenness_by_period.pdf", evenness_plot, width = 6, height = 5)
+
+shannon_data$day_period <- recode(shannon_data$day_period, "day" = "Midday", "night" = "Midnight")
+shannon_data$day_period <- factor(shannon_data$day_period, levels = c("Midday", "Midnight"))
+shannon_colors <- c("Midday" = "#FFD700", "Midnight" = "#1E3A8A")
+shannon_label <- "p-value = 0.82 (Kruskal-Wallis test)"
+
+shannon_plot <- ggplot(shannon_data, aes(x = as.factor(day_period), y = shannon_entropy)) +
+    geom_boxplot(aes(fill = day_period)) +
+    scale_fill_manual(values = shannon_colors) +
+    labs(
+        x = "Diurnal Period",
+        y = "Shannon Entropy",
+        title = NULL
+    ) +
+    theme_minimal(base_family = "sans") +
+    theme(
+        legend.position = "none",
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        plot.background = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        axis.line = element_line(color = "black", linewidth = 0.8)
+    ) +
+    annotate("text", x = 1.5, y = min(shannon_data$shannon_entropy, na.rm = TRUE), 
+             label = shannon_label, vjust = -0.5, size = 3)
+
+ggsave("shannon_by_period.png", shannon_plot, width = 6, height = 5, dpi = 300)
+ggsave("shannon_by_period.pdf", shannon_plot, width = 6, height = 5)
+
+faiths_pd_data$day_period <- recode(faiths_pd_data$day_period, "day" = "Midday", "night" = "Midnight")
+faiths_pd_data$day_period <- factor(faiths_pd_data$day_period, levels = c("Midday", "Midnight"))
+faiths_pd_colors <- c("Midday" = "#FFD700", "Midnight" = "#1E3A8A")
+faiths_pd_label <- "p-value = 0.13 (Kruskal-Wallis test)"
+
+faiths_pd_plot <- ggplot(faiths_pd_data, aes(x = as.factor(day_period), y = faith_pd)) +
+    geom_boxplot(aes(fill = day_period)) +
+    scale_fill_manual(values = faiths_pd_colors) +
+    labs(
+        x = "Diurnal Period",
+        y = "Faith's PD",
+        title = NULL
+    ) +
+    theme_minimal(base_family = "sans") +
+    theme(
+        legend.position = "none",
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        plot.background = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        axis.line = element_line(color = "black", linewidth = 0.8)
+    ) +
+    annotate("text", x = 1.5, y = min(faiths_pd_data$faith_pd, na.rm = TRUE), 
+             label = faiths_pd_label, vjust = -0.5, size = 3)
+
+ggsave("faiths_pd_by_period.png", faiths_pd_plot, width = 6, height = 5, dpi = 300)
+ggsave("faiths_pd_by_period.pdf", faiths_pd_plot, width = 6, height = 5)
+```
