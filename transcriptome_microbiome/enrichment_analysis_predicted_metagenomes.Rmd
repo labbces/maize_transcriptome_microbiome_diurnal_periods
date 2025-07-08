@@ -7,6 +7,14 @@ output: html_notebook
 
 A simple enrichment analysis was carried out with the universal enrichment analyzer `enricher` for the KO enrichment analysis.
 
+First, metagenomes were predicted using the `picrust2` pipeline and the original OTU table:
+
+```{bash}
+# 2f_otu_table.sample_filtered.no_mitochondria_chloroplast.biom is the OTU table file (from Wallace et al 2018)
+# rep_set_conekt.fna is the representative sequences file (from Wallace et al 2018)
+picrust2_pipeline.py -i 2f_otu_table.sample_filtered.no_mitochondria_chloroplast.biom -s rep_set_conekt.fna -o picrust2_out_pipeline_not_strat -p 12 --in_traits EC,KO,PFAM
+```
+
 `otus_ko.txt` contains the mapping of OTUs to KOs and was generated using the `picrust2_ko_to_enrichment.py` script using the output from unstratified picrust2 (`KO_predicted.tsv`).
 
 ```{r}
