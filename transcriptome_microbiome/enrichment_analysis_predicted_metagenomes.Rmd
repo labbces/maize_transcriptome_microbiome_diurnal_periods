@@ -5,9 +5,9 @@ output: html_notebook
 
 # Enrichment Analysis Predicted Metagenomes
 
-A simple enrichment analysis will also be carried out with the universal enrichment analyzer `enricher` for the KO enrichment analysis.
+A simple enrichment analysis was carried out with the universal enrichment analyzer `enricher` for the KO enrichment analysis.
 
-`otus_ko.txt` contains the mapping of OTUs to KOs and was generated using the `picrus2_ko_to_enrichment.py` script using the output from unstratified picrust2 (`KO_predicted.tsv`).
+`otus_ko.txt` contains the mapping of OTUs to KOs and was generated using the `picrust2_ko_to_enrichment.py` script using the output from unstratified picrust2 (`KO_predicted.tsv`).
 
 ```{r}
 library(clusterProfiler)
