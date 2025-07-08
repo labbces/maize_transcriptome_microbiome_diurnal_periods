@@ -1,4 +1,6 @@
 # Figure Properties
 
-* day_color: "#FFD700"    # Gold
-* night_color: "#1E3A8A"  # Indigo
+## Colors
+
+* midday_color: "#FFD700"    # Gold
+* midnight_color: "#1E3A8A"  # Indigo
