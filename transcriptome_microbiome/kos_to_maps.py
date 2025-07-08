@@ -5,7 +5,7 @@ import argparse
 parser = argparse.ArgumentParser(description="Generates a TERM2GENE file to be used in the enricher function (clusterProfiler) for KEGG pathways")
 parser.add_argument('--otu_ko_association', type=str, metavar='otus_ko.txt',
                     dest='otu_ko_file',
-                    help='The file with KOs associated with OTU/ASV (TERM2GENE output from picrus2_ko_to_enrichment.py)',
+                    help='The file with KOs associated with OTU/ASV (TERM2GENE output from picrust2_ko_to_enrichment.py)',
                     required=True)
 parser.add_argument('--ko_map_association', type=str, metavar='ko',
                     dest='ko_map_file',
