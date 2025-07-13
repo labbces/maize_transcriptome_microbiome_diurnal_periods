@@ -8,6 +8,7 @@ Folders:
  * `transcriptome/` : normalization and filtering steps, generation and analysis of co-expression networks, plot generation for circadian-associated genes, heatmap generation (eigengenes).
  * `microbiome/` : normalization and filtering steps, differential abundance analyses, reconstruction and analysis of co-occurrence networks, heatmap generation (differentially abundant OTUs).
  * `transcriptome_microbiome/` : cross-correlations between microbiome and transcriptome, KO enrichment analysis.
+ * `figures/`: most figures in main text and supplementary data (high resolution PDFs).
 
 Additional code will be moved to the GitHub wiki very soon: Annotation of maize transcriptional regulators, quantification of gene expression, GO enrichment analysis, assignment of GTDB identifiers (taxonomy).
 
