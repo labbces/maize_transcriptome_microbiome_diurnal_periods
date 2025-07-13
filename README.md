@@ -10,7 +10,7 @@ Folders:
  * `transcriptome_microbiome/` : cross-correlations between microbiome and transcriptome, KO enrichment analysis.
  * `figures/`: most figures in main text and supplementary data (high resolution PDFs).
 
-Additional code will be moved to the GitHub wiki very soon: Annotation of maize transcriptional regulators, quantification of gene expression, GO enrichment analysis, assignment of GTDB identifiers (taxonomy).
+Additional code will be moved to the [GitHub wiki](https://github.com/SantosRAC/maize_transcriptome_microbiome_diurnal_periods/wiki) very soon: Annotation of maize transcriptional regulators, quantification of gene expression, GO enrichment analysis, assignment of GTDB identifiers (taxonomy).
 
 ## Funding
 
