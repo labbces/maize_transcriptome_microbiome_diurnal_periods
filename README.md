@@ -10,7 +10,7 @@ Folders:
  * `transcriptome_microbiome/` : cross-correlations between microbiome and transcriptome, KO enrichment analysis.
  * `figures/`: most figures in main text and supplementary data (high resolution PDFs).
 
-Additional code will be moved to the [GitHub wiki](https://github.com/SantosRAC/maize_transcriptome_microbiome_diurnal_periods/wiki) very soon: Annotation of maize transcriptional regulators, quantification of gene expression, GO enrichment analysis, assignment of GTDB identifiers (taxonomy).
+Additional code is available on our [GitHub wiki](https://github.com/SantosRAC/maize_transcriptome_microbiome_diurnal_periods/wiki).
 
 ## Funding
 
@@ -27,4 +27,4 @@ Additional code will be moved to the [GitHub wiki](https://github.com/SantosRAC/
 
 Submission is being processed on BioRxiv:
 
-dos Santos, Renato Augusto Corrêa, et al. "Identifying associations between maize leaf transcriptome and bacteriome during different diurnal periods", _BioRxiv_ (2025).
+[dos Santos, Renato Augusto Correa, et al. "Identifying associations between maize leaf transcriptome and bacteriome during different diurnal periods." bioRxiv (2025): 2025-07.](https://www.biorxiv.org/content/10.1101/2025.07.11.664371v1)
