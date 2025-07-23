@@ -10,7 +10,7 @@ Folders:
  * `transcriptome_microbiome/` : cross-correlations between microbiome and transcriptome, KO enrichment analysis.
  * `figures/`: most figures in main text and supplementary data (high resolution PDFs).
 
-Additional code is available on our [GitHub wiki](https://github.com/SantosRAC/maize_transcriptome_microbiome_diurnal_periods/wiki).
+Additional code is available on our [GitHub wiki](https://github.com/labbces/maize_transcriptome_microbiome_diurnal_periods/wiki).
 
 ## Funding
 
