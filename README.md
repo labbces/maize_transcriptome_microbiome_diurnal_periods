@@ -25,6 +25,6 @@ Additional code is available on our [GitHub wiki](https://github.com/SantosRAC/m
 
 ## Citation
 
-Submission is being processed on BioRxiv:
+Preprint available on BioRxiv:
 
 [dos Santos, Renato Augusto Correa, et al. "Identifying associations between maize leaf transcriptome and bacteriome during different diurnal periods." bioRxiv (2025): 2025-07.](https://www.biorxiv.org/content/10.1101/2025.07.11.664371v1)
